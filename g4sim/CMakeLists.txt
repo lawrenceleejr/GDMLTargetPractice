@@ -38,7 +38,8 @@ endif()
 # --------------------
 set(SOURCES
     BSMPhysics.cc
-    NeutrinoBiasMessenger.cc
+    Biasing.cc
+    BiasingMessenger.cc
     DetectorConstruction.cc
     DetectorMessenger.cc
     PrimaryGenerator.cc
@@ -46,6 +47,7 @@ set(SOURCES
     RunAction.cc
     RunActionMessenger.cc
     EventAction.cc
+    SplitNeutrinoPhysics.cc
     SteppingAction.cc
     ExitWriter.cc
     main.cc

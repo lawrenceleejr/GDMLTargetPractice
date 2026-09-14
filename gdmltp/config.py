@@ -35,8 +35,11 @@ VERTEX_LEVEL_GENERATORS = ("genie", "achilles", "pythia", "external")
 #     For an unpolarized muon the charged lepton and the nu_mu share the
 #     rest-frame Michel spectrum 2x^2(3-2x), so they share the boosted one too:
 #     <E> = 0.35 E_mu each, leaving the nu_e the remaining 0.30 E_mu.
-ENERGY_MODES = ("mono", "gauss", "exp", "arb",
+ENERGY_MODES = ("mono", "flux", "gauss", "exp", "arb",
                 "mudecay_numu", "mudecay_nue", "mudecay_e")
+# JTR attempting to add flux reading capability to genie
+"""ENERGY_MODES = ("mono", "flux", "gauss", "exp", "arb",
+                "mudecay_numu", "mudecay_nue", "mudecay_e")"""
 # Modes with no native g4sim gun command: the host samples them into a beam file.
 SAMPLED_ENERGY_MODES = ("mudecay_numu", "mudecay_nue", "mudecay_e")
 
@@ -65,11 +68,19 @@ class Energy:
     """Beam energy spectrum. Values are strings with a unit (e.g. "150 MeV"),
     passed verbatim to the backend just like the Geant4 macro expects."""
     mode: str = "mono"            # mono | gauss | exp | arb
-    value: str = "1 GeV"         # nominal (mono) / mean (gauss) / E0 (exp)
+    value: str = "1 GeV"
+    # JTR attempting to add flux capabilities
+    #value: Optional[str] = "1 GeV"         # nominal (mono) / mean (gauss) / E0 (exp)
     sigma: Optional[str] = None  # gauss only
     min: Optional[str] = None    # exp / arb range
     max: Optional[str] = None    # exp / arb range
     bins: list = field(default_factory=list)  # arb: list of {"value","weight"}
+    # JTR: Adding flux file reading capability, an optional parameter
+    # designating flux file location, but this kind of implies that the whole
+    # "value" attribute should be made optional, but I have no idea what that
+    # would break
+    # TODO: try making "value" an optional parameter
+    """file: Optional[str] = None"""
 
 
 DIST_KINDS = ("fixed", "gauss", "uniform")

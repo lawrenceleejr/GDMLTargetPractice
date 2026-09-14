@@ -59,13 +59,26 @@ def _neutrino_bias_lines(cfg):
         if pdg not in _NEUTRINO_PDGS:
             return []
 
-    factor = float(raw.get("factor", DEFAULT_NU_BIAS))
-    cc = float(raw.get("cc_bias", factor))
-    nc = float(raw.get("nc_bias", factor))
-    nuc = float(raw.get("nucleus_bias", factor))
-    det = raw.get("detector_name", "DefaultRegionForTheWorld")
-    return [f"/gdmltp/neutrinoBias {cc:g} {nc:g} {nuc:g} {det}"]
+    alias_names = ["TAUNUNUCBIASCC", "TAUNUNUCBIASNC", "TAUANUNUCBIASCC",
+                   "TAUANUNUCBIASNC", "MUNUNUCBIASCC", "MUNUNUCBIASNC",
+                   "MUANUNUCBIASCC", "MUANUNUCBIASNC", "ELNUNUCBIASCC",
+                   "ELNUNUCBIASNC", "ELANUNUCBIASCC", "ELANUNUCBIASNC",
+                   "NUELECCCBIAS", "NUELECNCBIAS"]
+    bias_names = ["TauNuNucleusCcBias", "TauNuNucleusNcBias",
+                  "TauANuNucleusCcBias", "TauANuNucleusNcBias", 
+                  "MuNuNucleusCcBias", "MuNuNucleusNcBias",
+                  "MuANuNucleusCcBias", "MuANuNucleusNcBias",
+                  "ElNuNucleusCcBias", "ElNuNucleusNcBias","ElANuNucleusCcBias",
+                  "ElANuNucleusNcBias", "NuElectronCcBias", "NuElectronNcBias"]
 
+    factor = float(raw.get("factor", DEFAULT_NU_BIAS))
+    cmd_prefix = f"/custom/biasing/"
+    cmd_list = []
+    for i in range(len(alias_names)):
+        cmd_list.append(cmd_prefix + bias_names[i] + " " + \
+            str(raw.get(alias_names[i], factor)))
+
+    return cmd_list
 
 def _exit_hepmc_lines(cfg):
     """`geant4.exit_hepmc` -> the /analysis/exit* commands (see g4sim/ExitWriter).
@@ -113,11 +126,11 @@ def build_macro(cfg, beam_file=None) -> str:
     nmode = cfg.geant4.get("neutrino_mode", "auto")
 
     lines = [f"/detector/readGDML {gdml_name}"]
-    lines += _neutrino_bias_lines(cfg)       # must precede /run/initialize
     lines += [
         "/run/initialize",
         f"/analysis/neutrinoMode {nmode}",
     ]
+    lines += _neutrino_bias_lines(cfg)       # must follow /run/initialize
     lines += _exit_hepmc_lines(cfg)          # must precede /run/beamOn
     if cfg.run.seed is not None:
         lines.append(f"/random/setSeeds {int(cfg.run.seed)} {int(cfg.run.seed) + 1}")

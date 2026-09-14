@@ -11,7 +11,8 @@
 #include "G4PhysListFactory.hh"
 
 #include "BSMPhysics.hh"
-#include "NeutrinoBiasMessenger.hh"
+#include "Biasing.hh"
+#include "BiasingMessenger.hh"
 #include "DetectorConstruction.hh"
 #include "PrimaryGenerator.hh"
 #include "RunAction.hh"
@@ -21,6 +22,10 @@
 #include "G4PhysListFactory.hh"
 #include "G4VModularPhysicsList.hh"
 #include "SteppingAction.hh"
+#include "SplitNeutrinoPhysics.hh"
+#include "G4GenericBiasingPhysics.hh"
+#include "G4BiasingProcessInterface.hh"
+#include "MyExceptionHandler.hh"
 #include "G4EmExtraPhysics.hh"
 #include "G4ParticleTable.hh"
 
@@ -64,15 +69,32 @@ int main(int argc, char** argv) {
     G4VModularPhysicsList* physics = factory.GetReferencePhysList("FTFP_BERT");
     // Keep the pointer: /gdmltp/neutrinoBias sets bias factors on THIS instance
     // (they are members read in its ConstructProcess() at /run/initialize).
-    auto* nuPhysics = new G4NeutrinoPhysics();
-    physics->RegisterPhysics(nuPhysics);
+    //auto* nuPhysics = new G4NeutrinoPhysics();
+    //physics->RegisterPhysics(nuPhysics);
     // User-defined long-lived particles (/bsm/define, /bsm/channel in PreInit);
     // registered LAST so every standard particle exists when it constructs.
+
+    // Neutrino Biasing section
+    physics->RegisterPhysics(new G4NeutrinoPhysics());
+    physics->RegisterPhysics(new SplitNeutrinoPhysics());
+    auto biasing = new G4GenericBiasingPhysics();
+
+    // name all of the particles (neutrinos) we want to bias
+    std::vector<G4String> particlesToBias = {
+        "nu_tau", "anti_nu_tau", "nu_mu", "anti_nu_mu", "nu_e", "anti_nu_e"
+    };
+    for (const auto& particle : particlesToBias) {
+        biasing->PhysicsBias(particle, BiasingConfig::ProcessNames);
+        // automatically applies biasings we set to neutrinos in our list
+    }
+
+    physics->RegisterPhysics(biasing);
+
     physics->RegisterPhysics(new BSMPhysics());
     auto* bsmMessenger = new BSMMessenger();
     (void)bsmMessenger;   // owned for the program lifetime (macro-driven)
-    auto* nuBiasMessenger = new NeutrinoBiasMessenger(nuPhysics);
-    (void)nuBiasMessenger;   // /gdmltp/neutrinoBias, PreInit
+    //auto* nuBiasMessenger = new NeutrinoBiasMessenger(nuPhysics);
+    //(void)nuBiasMessenger;   // /gdmltp/neutrinoBias, PreInit
 #ifdef USE_CELERITAS
     auto& celerIntegration = celeritas::TrackingManagerIntegration::Instance();
     physics->RegisterPhysics(
@@ -84,7 +106,7 @@ int main(int argc, char** argv) {
               "at runtime." << G4endl;
 #endif
     runManager->SetUserInitialization(physics);
-
+    new MyExceptionHandler();
      auto runAction = new RunAction();
     runManager->SetUserAction(runAction);
 
