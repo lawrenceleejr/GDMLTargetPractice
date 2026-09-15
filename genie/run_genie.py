@@ -152,6 +152,9 @@ def _xsec_args(job, workdir, emax_gev=None):
     # image can bake one for the shipped tune/target so the example skips that:
     # if a baked spline for this probe+target+tune+egl covers the needed energy,
     # use it directly. (HEDIS_XSEC_DIR overrides the default location.)
+
+    # JTR: Claude wrote what is above. It is naive and incomplete. It should not
+    # be allowed to write GENIE code.
     if hedis:
         baked = _baked_hedis_spline(abs(probe), target, tune, egl, emax)
         if baked is not None:
@@ -186,6 +189,7 @@ def run(job_path):
     vtx_units = job.get("length_units", "cm")
     ghep = str(workdir / "genie_events.ghep.root")
     gst = str(workdir / "genie_events.gst.root")
+
 
     cmd = ["gevgen", "-n", str(events), "-p", str(job["probe"]), "-t", str(job["target"]),
            "--tune", job["tune"], "--event-generator-list", job["event_generator_list"],

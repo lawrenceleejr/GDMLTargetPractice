@@ -54,20 +54,20 @@ geant4:
 
 
     # Biasings for indivudal processes are provided below
-    TAUNUNUCBIASCC: 1e11
-    TAUNUNUCBIASNC: 1
-    TAUANUNUCBIASCC: 1
-    TAUANUNUCBIASNC: 1
-    MUNUNUCBIASCC: 1e11
-    MUNUNUCBIASNC: 1
-    MUANUNUCBIASCC: 1e1
-    MUANUNUCBIASNC: 1
-    ELNUNUCBIASCC: 1e11
-    ELNUNUCBIASNC: 1
-    ELANUNUCBIASCC: 1
-    ELANUNUCBIASNC: 1
-    NUELECCCBIAS: 1
-    NUELECNCBIAS: 1
+    TAUNUNUCBIASCC: 1e11        # tau neutrino nuclear charged current
+    TAUNUNUCBIASNC: 1           # tau neutrino nuclear neutral current
+    TAUANUNUCBIASCC: 1          # tau antineutrino nuclear charged current
+    TAUANUNUCBIASNC: 1          # tau antineutrino nuclear neutral current
+    MUNUNUCBIASCC: 1e11         # muon neutrino nuclear charged current           
+    MUNUNUCBIASNC: 1            # muon neutrino nuclear neutral current     
+    MUANUNUCBIASCC: 1e1         # muon antineutrino nuclear charged current     
+    MUANUNUCBIASNC: 1           # muon antineutrino nuclear neutral current     
+    ELNUNUCBIASCC: 1e11         # electron neutrino nuclear charged current
+    ELNUNUCBIASNC: 1            # electron neutrino nuclear neutral current   
+    ELANUNUCBIASCC: 1           # electron antineutrino nuclear charged current   
+    ELANUNUCBIASNC: 1           # electron antineutrino nuclear neutral current     
+    NUELECCCBIAS: 1             # all neutrino electron charged current
+    NUELECNCBIAS: 1             # all neutrino electron neutral current
 
 run:
   events: 200

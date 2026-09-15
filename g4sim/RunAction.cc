@@ -19,6 +19,7 @@ bool IsNeutrino(int pdg) {
 RunAction::RunAction()
 : G4UserRunAction()
 {
+    auto analysisManager = G4AnalysisManager::Instance();
     fMessenger = new RunActionMessenger(this);
 }
 
