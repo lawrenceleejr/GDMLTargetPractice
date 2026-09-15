@@ -5,6 +5,9 @@
 /control/alias NSHOTS 25
 /control/alias DETECTOR MAIA_v0
 
+# Hopefully fixing some crashes
+/run/numberOfThreads 1
+
 # --- BIASING CONFIGURATION: CC NUCLEAR ---
 /control/alias MUNUNUCBIASCC 1e11
 /control/alias MUNUNUCBIASNC 1
