@@ -1,0 +1,6 @@
+/gun/energy {ENERGY} GeV
+
+# Appending _CCNuc prevents your 4 different batch runs from overwriting each other
+/analysis/setFileName ../QEP_study/CC_NUC/{DETECTOR}_CCNUC
+
+/run/beamOn {NSHOTS}
