@@ -1,7 +1,7 @@
 name: Build Generator Base Images
 # Builds GENIE, Achilles and Pythia 8 FROM SOURCE into dedicated base images, so
 # nobody downstream (users or the per-push app-image workflows) ever compiles a
-# generator themselves. GENIE is the slow one (~2-3 h: Pythia6 + ROOT + LHAPDF +
+# generator themselves. GENIE is the slow one (~2-3 h: Pythia8 + ROOT + LHAPDF +
 # GENIE); the Pythia 8 + HepMC3 base builds in minutes. They run only when the
 # base recipes change or on manual dispatch -- the per-push app images just layer
 # gdmltp on top of the published bases. Failures are real failures.
@@ -23,7 +23,7 @@ on:
       genie_version:
         description: "GENIE Generator git tag"
         required: false
-        default: "R-3_04_02"
+        default: "R-3_06_02"
       root_version:
         description: "ROOT version for the GENIE base"
         required: false
@@ -46,7 +46,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GENIE_VERSION: ${{ github.event.inputs.genie_version || 'R-3_04_02' }}
+  GENIE_VERSION: ${{ github.event.inputs.genie_version || 'R-3_06_02' }}
   ROOT_VERSION: ${{ github.event.inputs.root_version || '6.28.12' }}
   ACHILLES_REF: ${{ github.event.inputs.achilles_ref || 'main' }}
   PYTHIA_VERSION: ${{ github.event.inputs.pythia_version || '8315' }}
@@ -114,8 +114,9 @@ jobs:
           # rebuild every layer from scratch (so the patched GENIE is actually
           # compiled in); it then repopulates buildcache2 and later edits are
           # incremental again.
-          cache-from: type=registry,ref=ghcr.io/lawrenceleejr/gdmltargetpractice-genie-base:buildcache2
-          cache-to: type=registry,ref=ghcr.io/lawrenceleejr/gdmltargetpractice-genie-base:buildcache2,mode=max
+          # JTR: Upped to buildcache3 because I am recompiling so much of GENIE
+          cache-from: type=registry,ref=ghcr.io/lawrenceleejr/gdmltargetpractice-genie-base:buildcache3
+          cache-to: type=registry,ref=ghcr.io/lawrenceleejr/gdmltargetpractice-genie-base:buildcache3,mode=max
 
   achilles-base:
     runs-on: ubuntu-latest

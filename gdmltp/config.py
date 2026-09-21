@@ -77,7 +77,8 @@ class Energy:
 @dataclass
 class Flux:
     """Flux file capability, specifically for GENIE"""
-    file: str = "flux/IMCC3_M_1000GeV_1000_150m_gsimple.root"
+    file: Optional[str] = None
+    mode: str = "gsimple"
 
 
 DIST_KINDS = ("fixed", "gauss", "uniform")
@@ -514,6 +515,21 @@ def _particle_from(beam_raw):
         return str(pdg), pdg
     return str(raw), None
 
+# JTR: method of reading flux files
+def _flux_from(raw) -> Flux:
+    if not raw:
+        return Flux()
+    # If the user just wrote `flux: filename.root`
+    if isinstance(raw, str):
+        return Flux(file=raw)
+    # If the user wrote the full dictionary block
+    if isinstance(raw, dict):
+        return Flux(
+            file=raw.get("file"),
+            mode=raw.get("mode", "gsimple")
+        )
+    return Flux()
+
 
 def _beam_from(beam_raw: dict) -> Beam:
     pos_str, pos_dist = _position_from(beam_raw.get("position"))
@@ -526,6 +542,7 @@ def _beam_from(beam_raw: dict) -> Beam:
         pdg=pdg,
         mass=_opt_str(beam_raw.get("mass")),
         energy=_energy_from(beam_raw.get("energy")),
+        flux=_flux_from(beam_raw.get("flux")), # JTR: Flux file
         position=pos_str,
         direction=dir_str,
         angle_sigma=angle_sigma,

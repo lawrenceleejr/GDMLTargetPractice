@@ -93,7 +93,7 @@ jobs:
           # linked under ITS env -- "image builds but gevgen can't run" must be
           # red here, not at a user
           docker run --rm --entrypoint bash "$IMG" -c \
-            'set -e; for b in gevgen gntpc gmkspl; do command -v "$b"; done; source /opt/genie-env.sh; ! ldd "$GENIE/bin/gevgen" | grep "not found"'
+            'set -e; for b in gevgen gevgen_fnal gntpc gmkspl; do command -v "$b"; done; source /opt/genie-env.sh; ! ldd "$GENIE/bin/gevgen" | grep "not found"'
           # ... and this image also carries the TRANSPORT engine: one image,
           # both stages. g4sim must be present and linked against the base ROOT
           # (i.e. WITHOUT the GENIE env) or the merge is broken.

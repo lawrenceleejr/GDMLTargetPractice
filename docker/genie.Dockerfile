@@ -7,9 +7,9 @@
 #
 #   FROM  the project's Geant4 image           g4sim + Geant4 + ROOT 6.26 +
 #         (ghcr.io/<owner>/gdmltargetpractice) HepMC3 + gdmltp, env as shipped
-#   COPY  the GENIE stack from genie-base at   /opt/{genie,root,pythia6,lhapdf,
+#   COPY  the GENIE stack from genie-base at   /opt/{genie,root,pythia8,lhapdf,
 #         its ORIGINAL /opt paths              apfel}: GENIE's own ROOT 6.28
-#                                              (pythia6=ON), never relocated
+#                                              (pythia8=ON), never relocated
 #
 # The two ROOT stacks NEVER share an environment. ROOT libraries carry
 # unversioned sonames (libCore.so), so putting /opt/root/lib on the global
@@ -55,14 +55,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # The GENIE stack keeps its original prefixes (its binaries may carry absolute
 # RPATHs into /opt/*), so those paths must be FREE in the Geant4 base. If this
 # ever fires, the base image changed shape -- relocate deliberately, don't merge.
-RUN for d in /opt/genie /opt/root /opt/pythia6 /opt/lhapdf /opt/apfel; do \
+RUN for d in /opt/genie /opt/root /opt/pythia8 /opt/lhapdf /opt/apfel; do \
       if [ -e "$d" ]; then \
         echo "COLLISION: $d already exists in the Geant4 base image" >&2; \
         exit 1; \
       fi; \
     done
 
-COPY --from=genie-stack /opt/pythia6 /opt/pythia6
+COPY --from=genie-stack /opt/pythia8 /opt/pythia8
 COPY --from=genie-stack /opt/root    /opt/root
 COPY --from=genie-stack /opt/lhapdf  /opt/lhapdf
 COPY --from=genie-stack /opt/apfel   /opt/apfel
@@ -72,14 +72,14 @@ COPY --from=genie-stack /opt/genie   /opt/genie
 # global ENV: the global environment stays the Geant4 base's, so g4sim links
 # and runs against its own ROOT untouched.
 RUN { \
-      echo '# Environment for GENIE and ITS OWN ROOT/Pythia6/LHAPDF stack.'; \
+      echo '# Environment for GENIE and ITS OWN ROOT/Pythia8/LHAPDF stack.'; \
       echo '# Source this (or use the /usr/local/bin shims) before running'; \
       echo '# gevgen/gmkspl/gntpc/gmkhedissf. Deliberately not global: the'; \
       echo '# transport engine (g4sim) links the Geant4 base ROOT, and ROOT'; \
       echo '# sonames are unversioned -- one shared library path would mix them.'; \
       echo 'export GENIE=/opt/genie'; \
-      echo 'export PYTHIA6=/opt/pythia6/v6_428'; \
-      echo 'export PYTHIA6_LIB=/opt/pythia6/v6_428/lib'; \
+      echo 'export PYTHIA8_DIR=/opt/pythia8/install'; \
+      echo 'export PYTHIA8_LIB=/opt/pythia8/install/lib'; \
       echo 'export ROOTSYS=/opt/root'; \
       echo 'export LHAPDF_DIR=/opt/lhapdf'; \
       echo 'export APFEL_DIR=/opt/apfel'; \
@@ -89,7 +89,7 @@ RUN { \
       echo 'export HEDIS_XSEC_DIR=${GENIE}/data/evgen/hedis-xsec'; \
       echo 'export GDMLTP_HEDIS="$(cat /opt/genie/.gdmltp-hedis 2>/dev/null || echo 0)"'; \
       echo 'export PATH=${GENIE}/bin:${ROOTSYS}/bin:${LHAPDF_DIR}/bin:${APFEL_DIR}/bin:${PATH}'; \
-      echo 'export LD_LIBRARY_PATH=${GENIE}/lib:${ROOTSYS}/lib:${PYTHIA6_LIB}:${LHAPDF_DIR}/lib:${APFEL_DIR}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}'; \
+      echo 'export LD_LIBRARY_PATH=${GENIE}/lib:${ROOTSYS}/lib:${PYTHIA8_LIB}:${LHAPDF_DIR}/lib:${APFEL_DIR}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}'; \
     } > /opt/genie-env.sh
 
 # Shims: the GENIE tools by their usual names, each entering the GENIE env
@@ -100,7 +100,7 @@ RUN { \
       echo 'exec "$GENIE/bin/$(basename "$0")" "$@"'; \
     } > /usr/local/bin/genie-tool && \
     chmod +x /usr/local/bin/genie-tool && \
-    for b in gevgen gmkspl gntpc gmkhedissf gspl2root; do \
+    for b in gevgen gevgen_fnal gmkspl gntpc gmkhedissf gspl2root; do \
       ln -sf genie-tool /usr/local/bin/$b; \
     done
 

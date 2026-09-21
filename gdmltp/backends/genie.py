@@ -82,11 +82,6 @@ def flux_gevgen_args(flux: dict):
         e0 = parse_energy_gev(flux["value"])
         emin = parse_energy_gev(flux["min"]); emax = parse_energy_gev(flux["max"])
         return ["-e", f"{emin:g},{emax:g}", "-f", f"exp(-x/{e0:g})"], False
-    # JTR: Adding gsimple flux capabilities
-    if mode == "flux":
-        print(f"flux keys {flux.keys()}")
-        print("Crashes now")
-        return ["-f", flux["file"]], False
     if mode in ("mudecay_numu", "mudecay_nue", "mudecay_e"):
         # Angle-integrated lab spectrum of the daughters of in-flight muon decay
         # (value = parent muon energy). Exact TF1 expressions in y = x/E_mu.
@@ -207,6 +202,10 @@ class GenieBackend(Backend):
             target = infer_target(cfg.gdml)
 
         e = cfg.beam.energy
+
+        # JTR: Adding flux file reading capabilites
+        flux_file_path = getattr(cfg.beam.flux, "file", None)\
+              if hasattr(cfg.beam, "flux") else None
         job = {
             "generator": "genie",
             "gdml": Path(cfg.gdml).name,
@@ -218,6 +217,7 @@ class GenieBackend(Backend):
                 "min": e.min,
                 "max": e.max,
                 "bins": e.bins,
+                "file": flux_file_path,  # JTR: Flux reading
             },
             "position": cfg.beam.position,
             "direction": cfg.beam.direction,
