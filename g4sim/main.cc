@@ -67,8 +67,7 @@ int main(int argc, char** argv) {
     runManager->SetUserInitialization(detector);
 
     G4VModularPhysicsList* physics = factory.GetReferencePhysList("FTFP_BERT");
-    // Keep the pointer: /gdmltp/neutrinoBias sets bias factors on THIS instance
-    // (they are members read in its ConstructProcess() at /run/initialize).
+
     //auto* nuPhysics = new G4NeutrinoPhysics();
     //physics->RegisterPhysics(nuPhysics);
     // User-defined long-lived particles (/bsm/define, /bsm/channel in PreInit);
@@ -94,7 +93,7 @@ int main(int argc, char** argv) {
     auto* bsmMessenger = new BSMMessenger();
     (void)bsmMessenger;   // owned for the program lifetime (macro-driven)
     //auto* nuBiasMessenger = new NeutrinoBiasMessenger(nuPhysics);
-    //(void)nuBiasMessenger;   // /gdmltp/neutrinoBias, PreInit
+
 #ifdef USE_CELERITAS
     auto& celerIntegration = celeritas::TrackingManagerIntegration::Instance();
     physics->RegisterPhysics(

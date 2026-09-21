@@ -30,7 +30,7 @@ DEFAULT_NU_BIAS = 5.0e12          # matches the repo's hand-written neutrino mac
 
 def _neutrino_bias_lines(cfg):
     """Geant4's built-in neutrino processes have cross sections so small that
-    unbiased runs record essentially no interactions; g4sim's /gdmltp/neutrinoBias
+    unbiased runs record essentially no interactions; g4sim's G4VBiasingOperator
     command enables them and scales the cross sections via the G4EmParameters C++
     API. (Earlier this emitted the /physics_lists/em/Nu* UI commands, but those
     are not registered in every Geant4 build -- and an unknown command aborts the

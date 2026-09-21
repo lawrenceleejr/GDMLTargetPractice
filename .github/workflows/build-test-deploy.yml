@@ -220,9 +220,10 @@ jobs:
         # optional /physics_lists/em/Nu* UI commands do in this Geant4 build.
         run: |
           cat > nubias.mac << 'EOF'
-          /gdmltp/neutrinoBias 1e10 1e10 1e10 DefaultRegionForTheWorld
           /detector/readGDML gdml/liquid_argon_1m3.gdml
           /run/initialize
+          /custom/biasing/MuNuNucleusCcBias 1e10
+          /custom/biasing/MuNuNucleusNcBias 1e10
           /analysis/neutrinoMode on
           /random/setSeeds 7 8
           /gun/particle nu_mu
