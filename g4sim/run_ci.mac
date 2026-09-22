@@ -7,6 +7,9 @@
 # Read your GDML detector description
 /detector/readGDML gdml/MAIA_v0.gdml
 
+# JTR: Have to initialize the run before the gun with the new biasing
+/run/initialize
+
 #/physics_lists/em/addNeutrino
 
 
@@ -25,7 +28,6 @@
 /gun/energy 20 GeV
 #/gun/direction 0 0 1
 /gun/position 0 0 10 cm
-#/run/initialize
 
 
 # ==============================

@@ -31,7 +31,7 @@ env:
   #GENIE_BASE: ${{ github.event.inputs.genie_base || vars.GENIE_BASE_IMAGE || 'ghcr.io/lawrenceleejr/gdmltargetpractice-genie-base:latest' }}
   #GEANT4_BASE: ${{ github.event.inputs.geant4_base || vars.GEANT4_BASE_IMAGE || 'ghcr.io/lawrenceleejr/gdmltargetpractice:main' }}
   # Temporarily point to the branch-specific base image for this PR
-  GENIE_BASE: ghcr.io/lawrenceleejr/gdmltargetpractice-genie-base:${{ github.ref_name }}
+  GENIE_BASE: ghcr.io/lawrenceleejr/gdmltargetpractice-genie-base:${{ env.SANITIZED_REF }}
   GEANT4_BASE: ${{ github.event.inputs.geant4_base || vars.GEANT4_BASE_IMAGE || 'ghcr.io/lawrenceleejr/gdmltargetpractice:main' }}
 
 jobs:
@@ -46,6 +46,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set sanitized branch tag
+        run: |
+          # JTR: Replaces '/' with dashes '-' for Docker tag compatibility
+          # This is needed when working in branches
+          CLEAN_REF=$(echo "${{ github.ref_name }}" | tr '/' '-')
+          echo "SANITIZED_REF=${CLEAN_REF}" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
