@@ -39,6 +39,14 @@
 #/process/verbose 2        # Process-level verbosity
 #/run/verbose 1
 
+# JTR: Increasing verbosity for debugging:
+/control/verbose 2
+/run/verbose 2
+/event/verbose 2
+/tracking/verbose 2
+/process/verbose 2
+
+
 /run/beamOn 10
 
 
