@@ -74,7 +74,9 @@ jobs:
         run: |
           ldconfig
           ./build/g4sim g4sim/run_ci.mac
-          test -f output.root && rm -f output.root
+          #test -f output.root && rm -f output.root
+          ls -la *.root
+          rm -f output.root
 
       - name: Run an arb-mode macro (beta spectrum into the Si tracker)
         run: |
