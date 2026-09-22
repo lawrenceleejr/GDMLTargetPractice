@@ -94,7 +94,7 @@ ENV LHAPATH=${LHAPDF_DIR}/share/LHAPDF
 ARG ENABLE_HEDIS=0
 ARG APFEL_VERSION=3.0.6
 # JTR: Trying to fix GENIE not finding APFEL
-RUN if [ "$ENABLE_HEDIS" = "1" ]; then \
+    RUN if [ "$ENABLE_HEDIS" = "1" ]; then \
           command -v python >/dev/null 2>&1 || \
             ln -sf "$(command -v python3)" /usr/local/bin/python && \
           wget -q https://github.com/scarrazza/apfel/archive/refs/tags/${APFEL_VERSION}.tar.gz \
@@ -102,6 +102,7 @@ RUN if [ "$ENABLE_HEDIS" = "1" ]; then \
           cd apfel-${APFEL_VERSION} && \
           export LD_LIBRARY_PATH="$(lhapdf-config --libdir):$LD_LIBRARY_PATH" && \
           export LDFLAGS="-L$(lhapdf-config --libdir)" && \
+          export LIBS="-lLHAPDF" && \
           ./configure --prefix=/opt/apfel && \
           make -j"$(nproc)" && make install && cd /opt && rm -rf apfel-${APFEL_VERSION} ; \
         fi
