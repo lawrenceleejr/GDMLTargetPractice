@@ -1,7 +1,7 @@
 name: Build Generator Base Images
 # Builds GENIE, Achilles and Pythia 8 FROM SOURCE into dedicated base images, so
 # nobody downstream (users or the per-push app-image workflows) ever compiles a
-# generator themselves. GENIE is the slow one (~2-3 h: Pythia6 + ROOT + LHAPDF +
+# generator themselves. GENIE is the slow one (~2-3 h: Pythia8 + ROOT + LHAPDF +
 # GENIE); the Pythia 8 + HepMC3 base builds in minutes. They run only when the
 # base recipes change or on manual dispatch -- the per-push app images just layer
 # gdmltp on top of the published bases. Failures are real failures.
@@ -23,7 +23,7 @@ on:
       genie_version:
         description: "GENIE Generator git tag"
         required: false
-        default: "R-3_04_02"
+        default: "R-3_06_02"
       root_version:
         description: "ROOT version for the GENIE base"
         required: false
@@ -46,7 +46,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GENIE_VERSION: ${{ github.event.inputs.genie_version || 'R-3_04_02' }}
+  GENIE_VERSION: ${{ github.event.inputs.genie_version || 'R-3_06_02' }}
   ROOT_VERSION: ${{ github.event.inputs.root_version || '6.28.12' }}
   ACHILLES_REF: ${{ github.event.inputs.achilles_ref || 'main' }}
   PYTHIA_VERSION: ${{ github.event.inputs.pythia_version || '8315' }}
@@ -70,10 +70,10 @@ jobs:
           df -h /
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -81,19 +81,20 @@ jobs:
 
       - name: Extract metadata for Docker
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}-genie-base
           flavor: |
             latest=true
           tags: |
+            type=ref,event=branch
             type=raw,value=${{ env.GENIE_VERSION }}
 
       - name: Build and push the GENIE base image
         # Registry-backed build cache: the GHA cache backend rejects layers this
         # large (the first run built GENIE fine in ~60 min, then died with
         # "exporting to GitHub Actions Cache: not_found", cancelling the push).
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/genie-base.Dockerfile
@@ -114,8 +115,9 @@ jobs:
           # rebuild every layer from scratch (so the patched GENIE is actually
           # compiled in); it then repopulates buildcache2 and later edits are
           # incremental again.
-          cache-from: type=registry,ref=ghcr.io/lawrenceleejr/gdmltargetpractice-genie-base:buildcache2
-          cache-to: type=registry,ref=ghcr.io/lawrenceleejr/gdmltargetpractice-genie-base:buildcache2,mode=max
+          # JTR: Upped to buildcache3 because I am recompiling so much of GENIE
+          cache-from: type=registry,ref=ghcr.io/lawrenceleejr/gdmltargetpractice-genie-base:buildcache3
+          cache-to: type=registry,ref=ghcr.io/lawrenceleejr/gdmltargetpractice-genie-base:buildcache3,mode=max
 
   achilles-base:
     runs-on: ubuntu-latest
@@ -128,10 +130,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -139,16 +141,17 @@ jobs:
 
       - name: Extract metadata for Docker
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}-achilles-base
           flavor: |
             latest=true
           tags: |
+            type=ref,event=branch
             type=raw,value=${{ env.ACHILLES_REF }}
 
       - name: Build and push the Achilles base image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/achilles-base.Dockerfile
@@ -171,10 +174,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -182,18 +185,19 @@ jobs:
 
       - name: Extract metadata for Docker
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}-pythia-base
           flavor: |
             latest=true
           tags: |
+            type=ref,event=branch
             type=raw,value=${{ env.PYTHIA_VERSION }}
 
       - name: Build and push the Pythia base image
         # Cheap compared to the GENIE base: Pythia 8 + HepMC3 are self-contained
         # C++ and build in minutes, so the plain GHA cache is fine here.
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/pythia-base.Dockerfile

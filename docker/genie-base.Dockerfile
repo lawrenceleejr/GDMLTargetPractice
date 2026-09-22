@@ -13,10 +13,10 @@
 # genie app image (docker/genie.Dockerfile) layers gdmltp + the driver on top.
 ARG UBUNTU=ubuntu:22.04
 FROM ${UBUNTU}
-
-ARG GENIE_VERSION=R-3_04_02
+# JTR: Updating GENIE to 3.06.02 and LHAPDF to 6.5.6
+ARG GENIE_VERSION=R-3_06_02
 ARG ROOT_VERSION=6.28.12
-ARG LHAPDF_VERSION=6.5.4
+ARG LHAPDF_VERSION=6.5.6
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -33,21 +33,31 @@ WORKDIR /opt
 RUN git clone --branch ${GENIE_VERSION} --depth 1 \
       https://github.com/GENIE-MC/Generator.git /opt/genie
 
-# --- Pythia6 (GENIE's canonical recipe) -------------------------------------
-RUN mkdir -p /opt/pythia6 && cd /opt/pythia6 && \
-    bash /opt/genie/src/scripts/build/ext/build_pythia6.sh 6.4.28 && \
-    ls /opt/pythia6/v6_428/lib/libPythia6.so
-ENV PYTHIA6=/opt/pythia6/v6_428
-ENV PYTHIA6_LIB=/opt/pythia6/v6_428/lib
 
-# --- ROOT with Pythia6 support (batch-only: no graphics, no PyROOT) --------
+# JTR: Changing to Pythia8 as this is the GENIE recommendation for the future
+# --- Pythia8 -----------------------------------------------------------------
+RUN mkdir -p /opt/pythia8 && cd /opt/pythia8 && \
+    wget https://pythia8.web.cern.ch/releases/pythia83/pythia8318.tgz && \
+    tar -xf pythia8318.tgz && rm pythia8318.tgz && \
+    cd pythia8318 && \
+    ./configure --prefix=/opt/pythia8/install && \
+    make -j"$(nproc)" && make install && \
+    cd /opt && rm -rf /opt/pythia8/pythia8318
+ENV PYTHIA8_DIR=/opt/pythia8/install
+ENV PYTHIA8_INC=${PYTHIA8_DIR}/include
+ENV PYTHIA8_LIB=${PYTHIA8_DIR}/lib
+
+# --- ROOT with Pythia8 support (batch-only: no graphics, no PyROOT) --------
 RUN wget -q https://root.cern/download/root_v${ROOT_VERSION}.source.tar.gz && \
     tar -xzf root_v${ROOT_VERSION}.source.tar.gz && rm root_v${ROOT_VERSION}.source.tar.gz && \
     mkdir root-build && cd root-build && \
     cmake ../root-${ROOT_VERSION} \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_INSTALL_PREFIX=/opt/root \
-      -Dpythia6=ON -DPYTHIA6_LIBRARY=${PYTHIA6_LIB}/libPythia6.so \
+      -Dpythia8=ON \
+      -DPYTHIA8_DIR=/opt/pythia8/install \
+      -DPYTHIA8_INCLUDE_DIR=/opt/pythia8/install/include \
+      -DPYTHIA8_LIBRARY=/opt/pythia8/install/lib/libpythia8.so \
       -Dmathmore=ON -Dgdml=ON -Dminuit2=ON \
       -Dbuiltin_gsl=OFF \
       -Dx11=OFF -Dopengl=OFF -Dwebgui=OFF -Droot7=OFF \
@@ -59,23 +69,20 @@ RUN wget -q https://root.cern/download/root_v${ROOT_VERSION}.source.tar.gz && \
     cd /opt && rm -rf root-build root-${ROOT_VERSION}
 ENV ROOTSYS=/opt/root
 ENV PATH=${ROOTSYS}/bin:${PATH}
-ENV LD_LIBRARY_PATH=${ROOTSYS}/lib:${PYTHIA6_LIB}
+ENV LD_LIBRARY_PATH=${ROOTSYS}/lib:${PYTHIA8_LIB}
 
-# --- LHAPDF 6 ----------------------------------------------------------------
-RUN wget -q https://lhapdf.hepforge.org/downloads/?f=LHAPDF-${LHAPDF_VERSION}.tar.gz \
-      -O LHAPDF-${LHAPDF_VERSION}.tar.gz && \
-    tar -xzf LHAPDF-${LHAPDF_VERSION}.tar.gz && rm LHAPDF-${LHAPDF_VERSION}.tar.gz && \
-    cd LHAPDF-${LHAPDF_VERSION} && \
-    ./configure --prefix=/opt/lhapdf --disable-python && \
+# JTR: Modernizing to LHAPDF 6.5.6
+# --- LHAPDF 6.5.6 ------------------------------------------------------------
+RUN wget -q https://lhapdf.hepforge.org/downloads/?f=LHAPDF-6.5.6.tar.gz \
+      -O LHAPDF-6.5.6.tar.gz && \
+    tar -xzf LHAPDF-6.5.6.tar.gz && rm LHAPDF-6.5.6.tar.gz && \
+    cd LHAPDF-6.5.6 && \
+    ./configure --prefix=/opt/lhapdf PYTHON=python3 && \
     make -j"$(nproc)" && make install && \
-    cd /opt && rm -rf LHAPDF-${LHAPDF_VERSION}
+    cd /opt && rm -rf LHAPDF-6.5.6
 ENV LHAPDF_DIR=/opt/lhapdf
 ENV LD_LIBRARY_PATH=${LHAPDF_DIR}/lib:${LD_LIBRARY_PATH}
-# lhapdf-config on PATH: APFEL's configure and `lhapdf install` both need it
-# (APFEL aborts "LHAPDF cannot be found!" otherwise).
 ENV PATH=${LHAPDF_DIR}/bin:${PATH}
-# Explicit PDF search path so gmkhedissf (which links LHAPDF) finds sets that
-# `lhapdf install` drops in the prefix datadir.
 ENV LHAPDF_DATA_PATH=${LHAPDF_DIR}/share/LHAPDF
 ENV LHAPATH=${LHAPDF_DIR}/share/LHAPDF
 
@@ -110,8 +117,10 @@ ENV GENIE=/opt/genie
 # `make` layer even with a new patch layer above it, so the patched source was
 # never actually recompiled (the baked HEDIS metafile came out at old, low
 # precision). Keeping the patch and the build in ONE RUN -- keyed by this rev --
-# guarantees the compile sees the patched source. Bump on any source-patch edit.
-ARG GENIE_SRC_REV=2
+# guarantees the compile sees the patched source. Bump on any source-patch edit.\
+
+# JTR: Changed this 2 -> 3 to demand recompilation of GENIE
+ARG GENIE_SRC_REV=3
 # Patch a GENIE HEDIS metafile round-trip bug: HEDISStrucFunc's operator<<
 # writes the SF Inputs.txt at default (~6 sig-fig) precision, but operator==
 # compares the re-read metafile against the tune config at 1e-10. Tunes whose
@@ -121,7 +130,18 @@ ARG GENIE_SRC_REV=2
 # exact. (Verified end-to-end: this is exactly what blocks GHE19_00c event
 # generation, and setprecision(15) clears it.) The patch runs in the SAME RUN
 # as configure+make so the fix is always compiled in (see GENIE_SRC_REV above).
+
+# JTR: added --enable-fnal to the list of configuration commands. Added
+# the liblog line because I needed it in my experience. Note the find and sed
+# lines patching out references to pythia6 and replacing with pythia8. Updated
+# configuration flags to include baryon resonance, validation tools, and
+# pythia6->8
 RUN echo "GENIE_SRC_REV=${GENIE_SRC_REV}" && \
+    apt-get update && apt-get install -y liblog4cpp5-dev && \
+    cd ${GENIE}/config && \
+    find . -name "*.xml" -exec sed -i 's/Pythia6Decayer2023/Pythia8Decayer2023/g' {} + && \
+    find . -name "*.xml" -exec sed -i 's/AGCharmPythia6Hadro2023/AGCharmPythia8Hadro2023/g' {} + && \
+    find . -name "*.xml" -exec sed -i 's/Pythia6/Pythia8/g' {} + && \
     cd ${GENIE} && \
     sed -i '/#include <fstream>/a #include <iomanip>' \
       src/Physics/HEDIS/XSection/HEDISStrucFunc.h && \
@@ -133,16 +153,24 @@ RUN echo "GENIE_SRC_REV=${GENIE_SRC_REV}" && \
       HEDIS_CFG="--enable-apfel --with-apfel-inc=${APFEL_DIR}/include --with-apfel-lib=${APFEL_DIR}/lib" ; \
     fi && \
     ./configure \
+      --enable-fnal \
+      --enable-baryon-residence \
+      --enable-validation-tools \
+      --disable-pythia6 \
+      --enable-pythia8 \
+      --disable-lhapdf5 \
       --enable-lhapdf6 \
+      --with-pythia8-inc=${PYTHIA8_INC} \
+      --with-pythia8-lib=${PYTHIA8_LIB} \
       --with-lhapdf6-inc=${LHAPDF_DIR}/include \
       --with-lhapdf6-lib=${LHAPDF_DIR}/lib \
-      --with-pythia6-lib=${PYTHIA6_LIB} \
+      --with-optiz-level=O2 \
       --with-log4cpp-inc=/usr/include \
       --with-log4cpp-lib=/usr/lib/x86_64-linux-gnu \
       --with-libxml2-inc=/usr/include/libxml2 \
       --with-libxml2-lib=/usr/lib/x86_64-linux-gnu \
       --enable-flux-drivers --enable-geom-drivers \
-      --disable-profiler --disable-validation-tools --disable-doxygen-doc \
+      --disable-profiler --disable-doxygen-doc \
       ${HEDIS_CFG} && \
     make -j"$(nproc)" && \
     find ${GENIE} -name '*.o' -delete

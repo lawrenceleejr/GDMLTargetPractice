@@ -1,0 +1,42 @@
+# --- Macro Path ---
+/control/macroPath ../
+
+# --- RUN PARAMETERS ---
+/control/alias NSHOTS 25
+/control/alias DETECTOR MAIA_v0
+
+# Hopefully fixing some crashes
+/run/numberOfThreads 1
+
+# --- BIASING CONFIGURATION: CC NUCLEAR ---
+/control/alias MUNUNUCBIASCC 1e11
+/control/alias MUNUNUCBIASNC 1
+/control/alias MUANUNUCBIASCC 1e11
+/control/alias MUANUNUCBIASNC 1
+/control/alias ELNUNUCBIASCC 1e11
+/control/alias ELNUNUCBIASNC 1
+/control/alias ELANUNUCBIASCC 1e11
+/control/alias ELANUNUCBIASNC 1
+/control/alias NUELECCCBIAS 1
+/control/alias NUELECNCBIAS 1
+
+# --- INITIALIZATION ---
+/physics_lists/nu/NuDetectorName target
+/detector/readGDML ../gdml/{DETECTOR}.gdml
+/run/initialize
+
+# --- APPLY BIASES ---
+# Must be done post-initialization per your setup
+/custom/biasing/MuNuNucleusCcBias {MUNUNUCBIASCC}
+/custom/biasing/MuNuNucleusNcBias {MUNUNUCBIASNC}
+/custom/biasing/MuANuNucleusCcBias {MUANUNUCBIASCC}
+/custom/biasing/MuANuNucleusNcBias {MUANUNUCBIASNC}
+/custom/biasing/ElNuNucleusCcBias {ELNUNUCBIASCC}
+/custom/biasing/ElNuNucleusNcBias {ELNUNUCBIASNC}
+/custom/biasing/ElANuNucleusCcBias {ELANUNUCBIASCC}
+/custom/biasing/ElANuNucleusNcBias {ELANUNUCBIASNC}
+/custom/biasing/NuElectronCcBias {NUELECCCBIAS}
+/custom/biasing/NuElectronNcBias {NUELECNCBIAS}
+
+# --- KICK OFF THE PARTICLE SWEEP ---
+/control/foreach particle_loop.mac PARTICLE nu_mu #nu_e nu_tau ant_nu_mu anti_nu_e anti_nu_tau

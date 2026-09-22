@@ -152,6 +152,9 @@ def _xsec_args(job, workdir, emax_gev=None):
     # image can bake one for the shipped tune/target so the example skips that:
     # if a baked spline for this probe+target+tune+egl covers the needed energy,
     # use it directly. (HEDIS_XSEC_DIR overrides the default location.)
+
+    # JTR: Claude wrote what is above. It is naive and incomplete. It should not
+    # be allowed to write GENIE code.
     if hedis:
         baked = _baked_hedis_spline(abs(probe), target, tune, egl, emax)
         if baked is not None:
@@ -177,6 +180,8 @@ def _xsec_args(job, workdir, emax_gev=None):
 
 def run(job_path):
     job = json.loads(Path(job_path).read_text())
+    # DEBUGGING
+    print("DEBUG JOB DICT:", json.dumps(job, indent=2))
     workdir = Path(job_path).resolve().parent
     if job.get("beam_file"):
         return _run_beam(job, workdir)
@@ -187,14 +192,65 @@ def run(job_path):
     ghep = str(workdir / "genie_events.ghep.root")
     gst = str(workdir / "genie_events.gst.root")
 
-    cmd = ["gevgen", "-n", str(events), "-p", str(job["probe"]), "-t", str(job["target"]),
-           "--tune", job["tune"], "--event-generator-list", job["event_generator_list"],
-           "-o", ghep]
-    fargs, approx = flux_gevgen_args(job["flux"])
-    if approx:
-        print(f"[run_genie] WARNING: energy mode {job['flux'].get('mode')!r} is "
-              f"approximated by its nominal energy in v1.", file=sys.stderr)
-    cmd += fargs
+    # JTR: Trying to add some flux reading capabilites
+    # meaning we need to update the command accordingly
+    flux_info = job.get("flux", {}) # for some reason the yaml file is flattened
+    # so the `flux` key is at the top level and not under "beam".
+    # I do not know if this is intentional
+    
+    flux_file = flux_info.get("file")
+
+    # DEBUGGING
+    print("DEBUG FLUX FILE GRABBED:", flux_file)
+
+    #cmd = ["gevgen", "-n", str(events), "-f flux/IMCC3_M_1000GeV_1000_150m_gsimple.root", "-p", str(job["probe"]), "-t", str(job["target"]),
+    #       "--tune", job["tune"], "--event-generator-list", job["event_generator_list"],
+    #       "-o", ghep] # This is the command where the flux needs to go
+    cmd = []
+    
+    # 2. If a GSimple file is provided, use the specialized generator
+    if flux_file and "gsimple" in flux_file.lower():
+        print(f"[run_genie] GSimple flux detected. Switching to gevgen_fnal.")
+        
+        # gsimple syntax: "gsimple:<file_path>,<window>,<flavor_1>,<flavor_2>..."
+        # Here we default to window "DET" and all standard neutrino flavors
+        flavors = "-12,12,-14,14,-16,16"
+        gsimple_str = f"gsimple:{flux_file},DET,{flavors}"
+        
+        cmd = [
+            "gevgen_fnal",
+            "-n", str(events),
+            "-f", gsimple_str,
+            "-g", job["gdml"],
+            #"-t", str(job["target"]),
+            # Note: gevgen_fnal usually likes a geometry file (-g) instead of a 
+            # single target PDG (-t). If this fails, you may need to map 
+            # job["gdml"] here instead!
+        ]
+    
+    # 3. Otherwise, fall back to the standard generic generator
+    else:
+        cmd = [
+            "gevgen", 
+            "-n", str(events), 
+            "-p", str(job["probe"]), 
+            "-t", str(job["target"])
+        ]
+        
+        # This function adds the `-e` and `-f` flags for mono/exp modes
+        fargs, approx = flux_gevgen_args(flux_info)
+        if approx:
+            print(f"[run_genie] WARNING: energy mode {flux_info.get('mode')!r} is "
+                  f"approximated by its nominal energy in v1.", file=sys.stderr)
+        cmd += fargs
+
+    # 4. Append the common arguments
+    cmd += [
+        "--tune", job["tune"], 
+        "--event-generator-list", job["event_generator_list"],
+        "-o", ghep
+    ]
+
     if job.get("seed") is not None:
         cmd += ["--seed", str(int(job["seed"]))]
     cmd += _xsec_args(job, workdir)
@@ -256,7 +312,7 @@ def _enter_genie_env():
     """Merge the GENIE stack's environment into this process (merged image).
 
     In the combined GENIE+Geant4 image the GENIE environment (its own ROOT,
-    Pythia6, LHAPDF, the HEDIS markers) is deliberately NOT global -- g4sim in
+    Pythia8, LHAPDF, the HEDIS markers) is deliberately NOT global -- g4sim in
     the same image must keep the base ROOT, and ROOT sonames are unversioned.
     The driver owns every GENIE subprocess, so it enters that environment here:
     gevgen/gmkspl/gntpc/gmkhedissf children inherit it, and the driver's own

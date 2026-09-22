@@ -35,7 +35,7 @@ VERTEX_LEVEL_GENERATORS = ("genie", "achilles", "pythia", "external")
 #     For an unpolarized muon the charged lepton and the nu_mu share the
 #     rest-frame Michel spectrum 2x^2(3-2x), so they share the boosted one too:
 #     <E> = 0.35 E_mu each, leaving the nu_e the remaining 0.30 E_mu.
-ENERGY_MODES = ("mono", "gauss", "exp", "arb",
+ENERGY_MODES = ("mono", "flux", "gauss", "exp", "arb",
                 "mudecay_numu", "mudecay_nue", "mudecay_e")
 # Modes with no native g4sim gun command: the host samples them into a beam file.
 SAMPLED_ENERGY_MODES = ("mudecay_numu", "mudecay_nue", "mudecay_e")
@@ -65,11 +65,20 @@ class Energy:
     """Beam energy spectrum. Values are strings with a unit (e.g. "150 MeV"),
     passed verbatim to the backend just like the Geant4 macro expects."""
     mode: str = "mono"            # mono | gauss | exp | arb
-    value: str = "1 GeV"         # nominal (mono) / mean (gauss) / E0 (exp)
+    value: str = "1 GeV"
     sigma: Optional[str] = None  # gauss only
     min: Optional[str] = None    # exp / arb range
     max: Optional[str] = None    # exp / arb range
     bins: list = field(default_factory=list)  # arb: list of {"value","weight"}
+
+
+# JTR: Adding new dataclass for providing flux information to GENIE
+# TODO: Add more guardrails to prevent misuse
+@dataclass
+class Flux:
+    """Flux file capability, specifically for GENIE"""
+    file: Optional[str] = None
+    mode: str = "gsimple"
 
 
 DIST_KINDS = ("fixed", "gauss", "uniform")
@@ -129,7 +138,8 @@ class Beam:
     mass: Optional[str] = None  # rest mass override, e.g. "1.0 GeV" -- required
                                 # for BSM projectiles whose PDG id is not in the
                                 # common mass table (HNLs, dark photons, ...)
-    energy: Energy = field(default_factory=Energy)
+    flux: Optional[Flux] = field(default_factory=Flux)
+    energy: Optional[Energy] = field(default_factory=Energy)
     position: str = "0 0 -20 cm"
     direction: str = "0 0 1"     # "0 0 0" -> isotropic (geant4 only)
     angle_sigma: Optional[str] = None  # gaussian angular cone spread, e.g. "10 deg"
@@ -505,6 +515,21 @@ def _particle_from(beam_raw):
         return str(pdg), pdg
     return str(raw), None
 
+# JTR: method of reading flux files
+def _flux_from(raw) -> Flux:
+    if not raw:
+        return Flux()
+    # If the user just wrote `flux: filename.root`
+    if isinstance(raw, str):
+        return Flux(file=raw)
+    # If the user wrote the full dictionary block
+    if isinstance(raw, dict):
+        return Flux(
+            file=raw.get("file"),
+            mode=raw.get("mode", "gsimple")
+        )
+    return Flux()
+
 
 def _beam_from(beam_raw: dict) -> Beam:
     pos_str, pos_dist = _position_from(beam_raw.get("position"))
@@ -517,6 +542,7 @@ def _beam_from(beam_raw: dict) -> Beam:
         pdg=pdg,
         mass=_opt_str(beam_raw.get("mass")),
         energy=_energy_from(beam_raw.get("energy")),
+        flux=_flux_from(beam_raw.get("flux")), # JTR: Flux file
         position=pos_str,
         direction=dir_str,
         angle_sigma=angle_sigma,

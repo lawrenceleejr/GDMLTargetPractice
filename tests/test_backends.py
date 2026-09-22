@@ -98,28 +98,33 @@ def test_macro_arb_emits_bins():
 
 def test_macro_neutrino_bias_auto():
     """A neutrino primary auto-enables biasing before /run/initialize via our own
-    /gdmltp/neutrinoBias command (unbiased Geant4 neutrino runs record almost no
+    custom biasing commands (unbiased Geant4 neutrino runs record almost no
     interactions), driving the G4EmParameters API rather than the /physics_lists/
     em/Nu* UI commands that some Geant4 builds don't register."""
     mac = geant4.build_macro(config.RunConfig(
         gdml="g.gdml", beam=config.Beam(particle="nu_mu")))
-    assert "/gdmltp/neutrinoBias 5e+12 5e+12 5e+12 DefaultRegionForTheWorld" in mac
-    assert mac.index("/gdmltp/neutrinoBias") < mac.index("/run/initialize")
-    # no dependence on optional UI commands that abort the batch when absent
-    assert "/physics_lists/em/Nu" not in mac
-    assert "/control/suppressAbortion" not in mac
+    # JTR: Updating these tests for the new neutrino biasing
+    assert "/custom/biasing/MuNuNucleusCcBias" in mac
+    assert "/custom/biasing/MuNuNucleusNcBias" in mac
+    # The auto-bias value is 5e12, which the backend formats as a large integer/float
+    assert "5000000000000.0" in mac
 
 
 def test_macro_neutrino_bias_off_and_custom():
     off = geant4.build_macro(config.RunConfig(
         gdml="g.gdml", beam=config.Beam(particle="nu_mu"),
         geant4={"neutrino_bias": "off"}))
-    assert "/gdmltp/neutrinoBias" not in off
+    
+    # JTR: Ensure no biasing commands are generated when turned off
+    assert "/custom/biasing/MuNuNucleusCcBias" not in off
+
     custom = geant4.build_macro(config.RunConfig(
         gdml="g.gdml", beam=config.Beam(particle="nu_e"),
-        geant4={"neutrino_bias": {"factor": 1e10, "nc_bias": 3e9}}))
-    # cc/nucleus take the factor, nc overridden: "cc nc nuc region"
-    assert "/gdmltp/neutrinoBias 1e+10 3e+09 1e+10 DefaultRegionForTheWorld" in custom
+        geant4={"neutrino_bias": {"factor": 1e10, "ELNUNUCBIASNC": 3e9}}))
+
+    assert "/custom/biasing/ElNuNucleusCcBias" in custom
+    assert "/custom/biasing/ElNuNucleusCcBias 10000000000.0" in custom  # Factor 1e10 applied to CC
+    assert "/custom/biasing/ElNuNucleusNcBias 3000000000.0" in custom   # Custom 3e9 applied to NC
 
 
 def test_macro_no_bias_for_charged_primaries():

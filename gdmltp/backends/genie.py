@@ -202,6 +202,10 @@ class GenieBackend(Backend):
             target = infer_target(cfg.gdml)
 
         e = cfg.beam.energy
+
+        # JTR: Adding flux file reading capabilites
+        flux_file_path = getattr(cfg.beam.flux, "file", None)\
+              if hasattr(cfg.beam, "flux") else None
         job = {
             "generator": "genie",
             "gdml": Path(cfg.gdml).name,
@@ -213,6 +217,7 @@ class GenieBackend(Backend):
                 "min": e.min,
                 "max": e.max,
                 "bins": e.bins,
+                "file": flux_file_path,  # JTR: Flux reading
             },
             "position": cfg.beam.position,
             "direction": cfg.beam.direction,

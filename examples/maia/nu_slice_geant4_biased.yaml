@@ -47,15 +47,27 @@ beam:
     yprime: {dist: gauss, sigma: "0.1 mrad"}
 
 geant4:
-  neutrino_mode: on            # populate the nu_* interaction block
-  # Single biasing factor of 1e10 applied to every neutrino channel (CC, NC,
-  # nucleus), so an interaction is forced without hand-tuning per channel.
   neutrino_bias:
-    factor: 1.0e10
-    # To bias ONE process instead, set that channel and leave the others at 1:
-    #   cc_bias: 1.0e10        # nu-electron CC only
-    #   nc_bias: 1.0            # (nu-electron NC)
-    #   nucleus_bias: 1.0       # (nu-nucleus)
+    factor: 1.0e10 # This is the default value for ALL neutrino interactions
+    # If you want to investigate a specific interaction, set this to 1 and then
+    # set your specific channel to whatever biasing you'd like
+
+
+    # Biasings for indivudal processes are provided below
+    TAUNUNUCBIASCC: 1e11        # tau neutrino nuclear charged current
+    TAUNUNUCBIASNC: 1           # tau neutrino nuclear neutral current
+    TAUANUNUCBIASCC: 1          # tau antineutrino nuclear charged current
+    TAUANUNUCBIASNC: 1          # tau antineutrino nuclear neutral current
+    MUNUNUCBIASCC: 1e11         # muon neutrino nuclear charged current           
+    MUNUNUCBIASNC: 1            # muon neutrino nuclear neutral current     
+    MUANUNUCBIASCC: 1e1         # muon antineutrino nuclear charged current     
+    MUANUNUCBIASNC: 1           # muon antineutrino nuclear neutral current     
+    ELNUNUCBIASCC: 1e11         # electron neutrino nuclear charged current
+    ELNUNUCBIASNC: 1            # electron neutrino nuclear neutral current   
+    ELANUNUCBIASCC: 1           # electron antineutrino nuclear charged current   
+    ELANUNUCBIASNC: 1           # electron antineutrino nuclear neutral current     
+    NUELECCCBIAS: 1             # all neutrino electron charged current
+    NUELECNCBIAS: 1             # all neutrino electron neutral current
 
 run:
   events: 200

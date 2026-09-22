@@ -74,12 +74,12 @@ jobs:
         run: |
           ldconfig
           ./build/g4sim g4sim/run_ci.mac
-          test -f output.root && rm -f output.root
+          test -f output_0.root && rm -f output_0.root
 
       - name: Run an arb-mode macro (beta spectrum into the Si tracker)
         run: |
           ./build/g4sim macros/betas_silicon_sr90.mac
-          test -f output.root && rm -f output.root
+          test -f output_0.root && rm -f output_0.root
 
       - name: Beam-file replay (/gun/beamFile) smoke
         run: |
@@ -96,9 +96,9 @@ jobs:
           /run/beamOn 3
           EOF
           ./build/g4sim beam.mac
-          test -f output.root
-          python3 -c "import uproot,sys; n=uproot.open('output.root')['tree'].num_entries; print('events',n); sys.exit(0 if n==3 else 1)"
-          rm -f output.root beam.dat beam.mac
+          test -f output_0.root
+          python3 -c "import uproot,sys; n=uproot.open('output_0.root')['tree'].num_entries; print('events',n); sys.exit(0 if n==3 else 1)"
+          rm -f output_0.root beam.dat beam.mac
 
       - name: Hand-off HepMC3 smoke (/gun/hepmcFile)
         run: |
@@ -154,7 +154,7 @@ jobs:
           EOF
           ./build/g4sim transport.mac > handoff.log 2>&1 || { cat handoff.log; exit 1; }
           cat handoff.log
-          test -f output.root
+          test -f output_0.root
           # a generator's final-state neutrino is not a neutrino BEAM: no banner
           if grep -q "ON THE BARE GEANT4 BACKEND" handoff.log; then
             echo "the hand-off replay wrongly warned about a neutrino beam" >&2
@@ -162,7 +162,7 @@ jobs:
           fi
           python3 - << 'PY'
           import uproot, awkward as ak
-          t = uproot.open('output.root')['tree']
+          t = uproot.open('output_0.root')['tree']
           assert t.num_entries == 3, f"events {t.num_entries}"
           st = t['step_time'].array()
           t0 = ak.min(st[1]) if len(st[1]) else 0.0
@@ -177,7 +177,7 @@ jobs:
               f"per-particle vertices lost: primaries started at {zs}, "
               f"expected [-300, 300]")
           PY
-          rm -f output.root events.hepmc transport.mac handoff.log
+          rm -f output_0.root events.hepmc transport.mac handoff.log
 
       - name: BSM decay smoke (/bsm/define -> G4Decay)
         # Geant4 does the decay: define a 1 GeV neutral with a short sampled
@@ -199,10 +199,10 @@ jobs:
           /run/beamOn 20
           EOF
           ./build/g4sim bsm.mac
-          test -f output.root
+          test -f output_0.root
           python3 - << 'PY'
           import uproot, awkward as ak
-          t = uproot.open('output.root')['tree']
+          t = uproot.open('output_0.root')['tree']
           assert t.num_entries == 20
           pdg = t['primaryPDG'].array(library='np')
           assert (pdg == 9900014).all(), pdg[:5]
@@ -212,7 +212,7 @@ jobs:
           print('events with an in-flight decay:', decayed, '/ 20')
           assert decayed > 0, "no G4Decay daughters found"
           PY
-          rm -f output.root bsm.mac
+          rm -f output_0.root bsm.mac
 
       - name: Neutrino-bias smoke (/gdmltp/neutrinoBias -> G4EmParameters)
         # The bias command must be registered and drive the neutrino cross
@@ -220,9 +220,10 @@ jobs:
         # optional /physics_lists/em/Nu* UI commands do in this Geant4 build.
         run: |
           cat > nubias.mac << 'EOF'
-          /gdmltp/neutrinoBias 1e10 1e10 1e10 DefaultRegionForTheWorld
           /detector/readGDML gdml/liquid_argon_1m3.gdml
           /run/initialize
+          /custom/biasing/MuNuNucleusCcBias 1e10
+          /custom/biasing/MuNuNucleusNcBias 1e10
           /analysis/neutrinoMode on
           /random/setSeeds 7 8
           /gun/particle nu_mu
@@ -233,7 +234,7 @@ jobs:
           EOF
           ./build/g4sim nubias.mac > nubias.log 2>&1 || { cat nubias.log; exit 1; }
           cat nubias.log
-          test -f output.root
+          test -f output_0.root
           # firing a neutrino AT Geant4 is generator-free neutrino physics: the
           # engine must say so loudly, and point at the generators
           grep -q "ON THE BARE GEANT4 BACKEND" nubias.log
@@ -246,8 +247,8 @@ jobs:
             echo "GDMLTP_NO_WARNINGS did not silence the engine banner" >&2
             exit 1
           fi
-          python3 -c "import uproot,sys; t=uproot.open('output.root')['tree']; n=t.num_entries; nu='nu_isCC' in [k.split(';')[0] for k in t.keys()]; print('events',n,'nu block',nu); sys.exit(0 if (n==20 and nu) else 1)"
-          rm -f output.root nubias.mac nubias.log nubias_quiet.log
+          python3 -c "import uproot,sys; t=uproot.open('output_0.root')['tree']; n=t.num_entries; nu='nu_isCC' in [k.split(';')[0] for k in t.keys()]; print('events',n,'nu block',nu); sys.exit(0 if (n==20 and nu) else 1)"
+          rm -f output_0.root nubias.mac nubias.log nubias_quiet.log
 
       - name: Particle-by-PDG smoke (/gun/particlePDG)
         run: |
@@ -261,9 +262,9 @@ jobs:
           /run/beamOn 2
           EOF
           ./build/g4sim pdg.mac
-          test -f output.root
-          python3 -c "import uproot,sys; t=uproot.open('output.root')['tree']; import numpy as np; pdg=t['primaryPDG'].array(library='np'); print('primaries',pdg.tolist()); sys.exit(0 if (t.num_entries==2 and (pdg==2212).all()) else 1)"
-          rm -f output.root pdg.mac
+          test -f output_0.root
+          python3 -c "import uproot,sys; t=uproot.open('output_0.root')['tree']; import numpy as np; pdg=t['primaryPDG'].array(library='np'); print('primaries',pdg.tolist()); sys.exit(0 if (t.num_entries==2 and (pdg==2212).all()) else 1)"
+          rm -f output_0.root pdg.mac
 
       - name: Exit HepMC3 export + replay (the staged-simulation round trip)
         # g4sim reads HepMC3 already; this proves it now WRITES it too, and that
@@ -359,19 +360,19 @@ jobs:
           grep -q "loaded 3 HepMC3 hand-off event(s)" replay.log
           python3 - << 'PY'
           import uproot
-          t = uproot.open("output.root")["tree"]
+          t = uproot.open("output_0.root")["tree"]
           assert t.num_entries == 3, t.num_entries
           n = t["nTracks"].array(library="np")
           print("stage 2 tracks per event:", n.tolist())
           assert n.sum() > 0, "stage 2 transported nothing"
           PY
-          rm -f world.hepmc slab.hepmc output.root world.mac slab.mac replay.mac \
+          rm -f world.hepmc slab.hepmc output_0.root world.mac slab.mac replay.mac \
                 world.log slab.log replay.log
 
       - name: Python-written ntuples must open in REAL ROOT as a TTree
         # The regression this guards: uproot 5.7 writes an RNTuple for
         # `f["tree"] = data`, which uproot itself reads back fine (so every
-        # Python test passes) while `root output.root` reports
+        # Python test passes) while `root output_0.root` reports
         #   Error in <TKey::ReadObj>: Unknown class ROOT::RNTuple
         # This container has ROOT, so the check is the real thing, not a proxy.
         run: |
@@ -414,18 +415,18 @@ jobs:
         run: |
           export PATH="$PWD/build:$PATH"
           python3 -m gdmltp run --config examples/water_proton.yaml --local -n 5 -o run_out
-          test -f run_out/output.root
-          python3 -m gdmltp validate run_out/output.root
-          root -l -b -q '.github/scripts/check_ttree.C("run_out/output.root", 5)' \
+          test -f run_out/output_0.root
+          python3 -m gdmltp validate run_out/output_0.root
+          root -l -b -q '.github/scripts/check_ttree.C("run_out/output_0.root", 5)' \
             > g4_root_check.log 2>&1 || { cat g4_root_check.log; exit 1; }
           grep -q "holds a classic TTree" g4_root_check.log
-          python3 -m gdmltp analyze run_out/output.root -o run_out/analysis
+          python3 -m gdmltp analyze run_out/output_0.root -o run_out/analysis
           test -f run_out/analysis/summary.txt
           # Twiss phase-space beam end to end (host samples -> beam.dat -> /gun/beamFile)
           python3 -m gdmltp run --config examples/twiss_muon.yaml --local -n 20 -o twiss_out
           test -f twiss_out/beam.dat
-          test -f twiss_out/output.root
-          python3 -m gdmltp validate twiss_out/output.root
+          test -f twiss_out/output_0.root
+          python3 -m gdmltp validate twiss_out/output_0.root
           echo "Geant4 YAML + Twiss integration OK"
 
       - name: Upload build artifacts
@@ -452,10 +453,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -463,7 +464,7 @@ jobs:
 
       - name: Extract metadata for Docker
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
@@ -473,7 +474,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push the Geant4 image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/geant4.Dockerfile
@@ -510,7 +511,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -524,9 +525,9 @@ jobs:
           gtp() { docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
                              -v "$PWD:/run" -w /run "$@"; }
           gtp "$GEANT4" run --config examples/water_proton.yaml -n "$EVENTS" -o g4_out
-          test -f g4_out/output.root
-          gtp "$GEANT4" validate g4_out/output.root
-          gtp "$GEANT4" analyze g4_out/output.root -o g4_out/analysis
+          test -f g4_out/output_0.root
+          gtp "$GEANT4" validate g4_out/output_0.root
+          gtp "$GEANT4" analyze g4_out/output_0.root -o g4_out/analysis
           test -f g4_out/analysis/summary.txt
 
       - name: Plot the output ntuple (independent uproot read, inside the image)
@@ -536,7 +537,7 @@ jobs:
           # transport record -- an image that runs but writes nothing is red here
           docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
             -v "$PWD:/run" -w /run --entrypoint python3 "$GEANT4" \
-            .github/scripts/ci_ntuple_plots.py g4_out/output.root \
+            .github/scripts/ci_ntuple_plots.py g4_out/output_0.root \
             -o g4_out/plots --label "150 MeV p -> water" \
             --min-events "$EVENTS" --require-steps
 

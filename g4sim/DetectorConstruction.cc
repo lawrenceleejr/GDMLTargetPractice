@@ -114,34 +114,39 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
         G4cerr << "World logical volume not found!" << G4endl;
     }
     
-
     // -----------------------------------------
-    // Create target region for sensitive volumes
+    // Create neutrino target region
     // -----------------------------------------
-    auto targetRegion = new G4Region("target");
+    //auto targetRegion = new G4Region("target");
+    fTargetRegion = new G4Region("target");
 
     auto lvStore = G4LogicalVolumeStore::GetInstance();
 
-    G4cout << "\n=== Assigning Target Region ===" << G4endl;
+    G4cout << "\n=== Assigning Neutrino Region ===" << G4endl;
 
     for (auto lv : *lvStore) {
+        // Skip the World volume
+        if (lv == fWorldLogical) continue;
 
-      //G4cout << "Logical volume: " << lv->GetName() << G4endl;
+        // Skip Air, Vacuum, or Galactic volumes
+        if (lv->GetMaterial()) {
+            G4String matName = lv->GetMaterial()->GetName();
+            if (matName.find("Air") != std::string::npos || 
+                matName.find("Vacuum") != std::string::npos ||
+                matName.find("vacuum") != std::string::npos ||
+                matName.find("Galactic") != std::string::npos) {
+                continue; 
+            }
+        }
 
-        // Select your detector volume
-	//        if (lv->GetName() == "VertexBarrel_layer0_sens") {
-        if (lv->GetName().find("_sens") != std::string::npos) {
-	  // if (lv == world->GetLogicalVolume()){
-	  //continue;   // Skip world
-	  // }
-            targetRegion->AddRootLogicalVolume(lv);
-
-            G4cout << ">>> Target region set on: "
-                   << lv->GetName() << G4endl;
-	     }
+        // Add everything else to the target region
+        fTargetRegion->AddRootLogicalVolume(lv);
+        fTargetVolumes.push_back(lv);
+        G4cout << ">>> Neutrino target set on: " << lv->GetName() << G4endl;
     }
 
     G4cout << "===============================\n" << G4endl;
+    
 
     return fWorld;
 }

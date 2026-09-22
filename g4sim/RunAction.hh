@@ -2,6 +2,7 @@
 #define RUNACTION_H
 
 #include "G4UserRunAction.hh"
+#include "G4AnalysisManager.hh"
 #include "TFile.h"
 #include "TTree.h"
 #include "globals.hh"
