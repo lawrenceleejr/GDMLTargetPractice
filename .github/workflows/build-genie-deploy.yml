@@ -28,11 +28,11 @@ env:
   # GENIE_BASE is our own from-source GENIE stack (built by
   # build-generator-bases.yml so nobody downstream compiles GENIE themselves);
   # GEANT4_BASE is the project's own Geant4 image, released tag.
-  #GENIE_BASE: ${{ github.event.inputs.genie_base || vars.GENIE_BASE_IMAGE || 'ghcr.io/lawrenceleejr/gdmltargetpractice-genie-base:latest' }}
-  #GEANT4_BASE: ${{ github.event.inputs.geant4_base || vars.GEANT4_BASE_IMAGE || 'ghcr.io/lawrenceleejr/gdmltargetpractice:main' }}
-  # Temporarily point to the branch-specific base image for this PR
-  GENIE_BASE: ghcr.io/lawrenceleejr/gdmltargetpractice-genie-base:${{ env.SANITIZED_REF }}
+  GENIE_BASE: ${{ github.event.inputs.genie_base || vars.GENIE_BASE_IMAGE || 'ghcr.io/lawrenceleejr/gdmltargetpractice-genie-base:latest' }}
   GEANT4_BASE: ${{ github.event.inputs.geant4_base || vars.GEANT4_BASE_IMAGE || 'ghcr.io/lawrenceleejr/gdmltargetpractice:main' }}
+  # Temporarily point to the branch-specific base image for this PR
+  # GENIE_BASE: ghcr.io/lawrenceleejr/gdmltargetpractice-genie-base:${{ env.SANITIZED_REF }}
+  # GEANT4_BASE: ${{ github.event.inputs.geant4_base || vars.GEANT4_BASE_IMAGE || 'ghcr.io/lawrenceleejr/gdmltargetpractice:main' }}
 
 jobs:
   docker-genie:
