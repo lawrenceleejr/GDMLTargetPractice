@@ -93,14 +93,18 @@ ENV LHAPATH=${LHAPDF_DIR}/share/LHAPDF
 # functions of the GHE19 tunes) -- see the multi-TeV neutrino examples.
 ARG ENABLE_HEDIS=0
 ARG APFEL_VERSION=3.0.6
+# JTR: Trying to fix GENIE not finding APFEL
 RUN if [ "$ENABLE_HEDIS" = "1" ]; then \
-      command -v python >/dev/null 2>&1 || \
-        ln -sf "$(command -v python3)" /usr/local/bin/python && \
-      wget -q https://github.com/scarrazza/apfel/archive/refs/tags/${APFEL_VERSION}.tar.gz \
-        -O apfel.tar.gz && tar -xzf apfel.tar.gz && rm apfel.tar.gz && \
-      cd apfel-${APFEL_VERSION} && ./configure --prefix=/opt/apfel && \
-      make -j"$(nproc)" && make install && cd /opt && rm -rf apfel-${APFEL_VERSION} ; \
-    fi
+          command -v python >/dev/null 2>&1 || \
+            ln -sf "$(command -v python3)" /usr/local/bin/python && \
+          wget -q https://github.com/scarrazza/apfel/archive/refs/tags/${APFEL_VERSION}.tar.gz \
+            -O apfel.tar.gz && tar -xzf apfel.tar.gz && rm apfel.tar.gz && \
+          cd apfel-${APFEL_VERSION} && \
+          export LD_LIBRARY_PATH="$(lhapdf-config --libdir):$LD_LIBRARY_PATH" && \
+          export LDFLAGS="-L$(lhapdf-config --libdir)" && \
+          ./configure --prefix=/opt/apfel && \
+          make -j"$(nproc)" && make install && cd /opt && rm -rf apfel-${APFEL_VERSION} ; \
+        fi
 ENV APFEL_DIR=/opt/apfel
 ENV LD_LIBRARY_PATH=${APFEL_DIR}/lib:${LD_LIBRARY_PATH}
 ENV PATH=${APFEL_DIR}/bin:${PATH}

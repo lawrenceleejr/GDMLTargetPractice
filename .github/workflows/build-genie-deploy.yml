@@ -47,13 +47,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set sanitized branch tag
-        run: |
-          # JTR: Replaces '/' with dashes '-' for Docker tag compatibility
-          # This is needed when working in branches
-          CLEAN_REF=$(echo "${{ github.ref_name }}" | tr '/' '-')
-          echo "SANITIZED_REF=${CLEAN_REF}" >> $GITHUB_ENV
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
