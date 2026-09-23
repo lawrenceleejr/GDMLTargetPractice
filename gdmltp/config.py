@@ -185,7 +185,7 @@ class Beam:
 @dataclass
 class RunSettings:
     events: int = 100
-    output: str = "output.root"
+    output: str = "output_0.root"
     seed: Optional[int] = None
 
 
@@ -273,7 +273,7 @@ class RunConfig:
 
     def _validate_transport(self):
         """Geant4 transport of a generator's final state is ON by default (the
-        common output.root is meant to carry a transport record whatever made
+        common output_0.root is meant to carry a transport record whatever made
         the interaction); `transport: false` is the explicit opt-out, so the
         value has to be a real boolean rather than, say, the string "no"."""
         if self.generator not in VERTEX_LEVEL_GENERATORS:
@@ -591,7 +591,7 @@ def _run_from(raw: dict) -> RunSettings:
     seed = raw.get("seed")
     return RunSettings(
         events=int(raw.get("events", 100)),
-        output=str(raw.get("output", "output.root")),
+        output=str(raw.get("output", "output_0.root")),
         seed=None if seed is None else int(seed),
     )
 
