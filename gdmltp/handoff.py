@@ -164,15 +164,7 @@ def stage_inputs(outdir, gdml_name, output="output_0.root", seed=None, field=Non
     """
     outdir = Path(outdir)
     vertex = outdir / VERTEX_FILE
-
-    # JTR: Stage 1 creates 'produced' (output.root). Resolve whichever exists:
-    prod_path = outdir / produced
-    if not prod_path.exists():
-        alt_path = outdir / ("output_0.root" if produced == "output.root" else "output.root")
-        if alt_path.exists():
-            prod_path = alt_path
-
-    prod_path.replace(vertex)
+    (outdir / produced).replace(vertex)
 
     n = write_event_file(vertex, outdir / EVENT_FILE)
     (outdir / TRANSPORT_MACRO).write_text(
@@ -210,17 +202,7 @@ def read_spec(outdir):
 def merge_nu_block(transported_root, vertex_root, out_path, tree="tree"):
     """Write `out_path` = the transported tree with the generator's nu_* block
     and primary identity grafted on. Event counts must match 1:1."""
-
-    # JTR: Adding this to handle output_0.root
-    transported_path = Path(transported_root)
-    
-    # Fallback resolution for Geant4 output file naming
-    if not transported_path.exists():
-        alt_path = transported_path.parent / ("output_0.root" if transported_path.name == "output.root" else "output.root")
-        if alt_path.exists():
-            transported_path = alt_path
-    
-    with uproot.open(transported_path) as ft:
+    with uproot.open(transported_root) as ft:
         tt = ft[tree]
         n_t = int(tt.num_entries)
         names = [k.split(";")[0] for k in tt.keys()]
