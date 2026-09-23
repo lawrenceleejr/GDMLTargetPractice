@@ -88,7 +88,7 @@ def test_run_config_transport_two_stages(repo_root, synth_gst, tmp_path, monkeyp
         if len(calls) == 1:           # generator stage: emit vertex-level output
             genie_convert.convert(synth_gst, tmp_path / "output.root")
         else:                          # transport stage: emit transported output
-            write_synthetic(tmp_path / "output.root", n_events=25, seed=6)
+            write_synthetic(tmp_path / "output_0.root", n_events=25, seed=6)
 
         class P:  # noqa
             stdout = iter(["--> Event 0 starts."])
@@ -114,7 +114,7 @@ def test_run_config_transport_two_stages(repo_root, synth_gst, tmp_path, monkeyp
     assert (tmp_path / handoff.EVENT_FILE).exists()
 
     import uproot
-    t = uproot.open(tmp_path / "output.root")["tree"]
+    t = uproot.open(tmp_path / "output_0.root")["tree"]
     assert np.all(t["primaryPDG"].array(library="np") == 14)     # nu from generator
     assert t["nSteps"].array(library="np").sum() > 0             # steps from transport
 
@@ -192,7 +192,7 @@ def test_transport_command_finishes_a_generator_stage(repo_root, synth_gst,
 
     def fake_popen(cmd, **kw):
         calls.append(cmd)
-        write_synthetic(tmp_path / "output.root", n_events=25, seed=6)
+        write_synthetic(tmp_path / "output_0.root", n_events=25, seed=6)
 
         class P:
             stdout = iter(["--> Event 0 starts."])
@@ -207,7 +207,7 @@ def test_transport_command_finishes_a_generator_stage(repo_root, synth_gst,
     assert "g4:test" in calls[0]
 
     import uproot
-    t = uproot.open(tmp_path / "output.root")["tree"]
+    t = uproot.open(tmp_path / "output_0.root")["tree"]
     assert np.all(t["primaryPDG"].array(library="np") == 14)    # generator record
     assert t["nSteps"].array(library="np").sum() > 0            # Geant4 transport
 
