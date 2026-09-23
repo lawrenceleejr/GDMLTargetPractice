@@ -154,8 +154,8 @@ def build_transport_macro(gdml_name, n_events, event_file=EVENT_FILE, seed=None,
     return "\n".join(lines) + "\n"
 
 
-def stage_inputs(outdir, gdml_name, output="output.root", seed=None, field=None,
-                 generator="", produced="output.root", image=None):
+def stage_inputs(outdir, gdml_name, output="output_0.root", seed=None, field=None,
+                 generator="", produced="output_0.root", image=None):
     """Package stage 1's result as the stage-2 job, in the run directory.
 
     Renames the generator's ntuple to `vertex_level.root`, exports its final
@@ -202,7 +202,17 @@ def read_spec(outdir):
 def merge_nu_block(transported_root, vertex_root, out_path, tree="tree"):
     """Write `out_path` = the transported tree with the generator's nu_* block
     and primary identity grafted on. Event counts must match 1:1."""
-    with uproot.open(transported_root) as ft:
+
+    # JTR: Adding this to handle output_0.root
+    transported_path = Path(transported_root)
+    
+    # Fallback resolution for Geant4 output file naming
+    if not transported_path.exists():
+        alt_path = transported_path.parent / ("output_0.root" if transported_path.name == "output.root" else "output.root")
+        if alt_path.exists():
+            transported_path = alt_path
+    
+    with uproot.open(transported_path) as ft:
         tt = ft[tree]
         n_t = int(tt.num_entries)
         names = [k.split(";")[0] for k in tt.keys()]
