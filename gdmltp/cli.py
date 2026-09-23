@@ -179,7 +179,7 @@ def _build_parser():
 
     # analyze
     a = _sub("analyze", "summary report + plots")
-    a.add_argument("root", nargs="?", default="output_0.root")
+    a.add_argument("root", nargs="?", default="output.root")
     a.add_argument("-o", "--outdir", default="gdmltp_analysis")
     a.add_argument("--no-plots", dest="plots", action="store_false")
     a.add_argument("--depth-axis", default="z", choices=["x", "y", "z"])
@@ -190,7 +190,7 @@ def _build_parser():
 
     # validate
     v = _sub("validate", "check an output.root for schema + physics sanity")
-    v.add_argument("root", nargs="?", default="output_0.root")
+    v.add_argument("root", nargs="?", default="output.root")
     v.add_argument("--strict", action="store_true",
                    help="treat warnings as failures (exit 1)")
     v.add_argument("--events", type=int, default=20000,

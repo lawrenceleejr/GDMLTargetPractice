@@ -154,8 +154,8 @@ def build_transport_macro(gdml_name, n_events, event_file=EVENT_FILE, seed=None,
     return "\n".join(lines) + "\n"
 
 
-def stage_inputs(outdir, gdml_name, output="output_0.root", seed=None, field=None,
-                 generator="", produced="output_0.root", image=None):
+def stage_inputs(outdir, gdml_name, output="output.root", seed=None, field=None,
+                 generator="", produced="output.root", image=None):
     """Package stage 1's result as the stage-2 job, in the run directory.
 
     Renames the generator's ntuple to `vertex_level.root`, exports its final

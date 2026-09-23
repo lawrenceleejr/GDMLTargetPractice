@@ -185,7 +185,7 @@ class Beam:
 @dataclass
 class RunSettings:
     events: int = 100
-    output: str = "output_0.root"
+    output: str = "output.root"
     seed: Optional[int] = None
 
 
@@ -591,7 +591,7 @@ def _run_from(raw: dict) -> RunSettings:
     seed = raw.get("seed")
     return RunSettings(
         events=int(raw.get("events", 100)),
-        output=str(raw.get("output", "output_0.root")),
+        output=str(raw.get("output", "output.root")),
         seed=None if seed is None else int(seed),
     )
 
