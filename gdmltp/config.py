@@ -273,7 +273,7 @@ class RunConfig:
 
     def _validate_transport(self):
         """Geant4 transport of a generator's final state is ON by default (the
-        common output_0.root is meant to carry a transport record whatever made
+        common output.root is meant to carry a transport record whatever made
         the interaction); `transport: false` is the explicit opt-out, so the
         value has to be a real boolean rather than, say, the string "no"."""
         if self.generator not in VERTEX_LEVEL_GENERATORS:

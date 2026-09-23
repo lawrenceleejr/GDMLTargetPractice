@@ -327,7 +327,7 @@ def _run_transport_spec(spec, outdir, image, local):
     _exec_stage([spec["macro"]], image, env, outdir, local, dry_run=False,
                 label=":transport", events=n)
 
-    transported = outdir / "output_0.root"
+    transported = outdir / "output.root"
     target = outdir / spec["output"]
     handoff.merge_nu_block(transported, outdir / spec["vertex"], target)
     if target != transported and transported.exists():

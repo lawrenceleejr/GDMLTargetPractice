@@ -28,26 +28,26 @@ Geant4 image replays it:
   docker run --rm -v "$PWD:/run" -w /run $GEANT4 transport -o out""",
     "display": """\
 examples:
-  gdmltp display output_0.root --gdml my_detector.gdml     # WebGL html + PNG stills
-  gdmltp display output_0.root --events 0:10               # first ten events
-  gdmltp display output_0.root --blend --blend-events 5    # animated Blender scene
+  gdmltp display output.root --gdml my_detector.gdml     # WebGL html + PNG stills
+  gdmltp display output.root --events 0:10               # first ten events
+  gdmltp display output.root --blend --blend-events 5    # animated Blender scene
   gdmltp display --gdml my_detector.gdml                 # geometry only, no events""",
     "analyze": """\
 examples:
-  gdmltp analyze output_0.root                             # summary.txt + plots
-  gdmltp analyze output_0.root -o results --depth-axis x   # beam along x""",
+  gdmltp analyze output.root                             # summary.txt + plots
+  gdmltp analyze output.root -o results --depth-axis x   # beam along x""",
     "compare": """\
 examples:
   gdmltp compare du.root w.root --labels DU,W            # shower profile + containment + leakage
   gdmltp compare a.root b.root -o cmp --axis x""",
     "info": """\
 examples:
-  gdmltp info output_0.root                                # events, branches, nu block
+  gdmltp info output.root                                # events, branches, nu block
   gdmltp info gdml/water_phantom_30cm.gdml               # solids + bounding box""",
     "validate": """\
 examples:
-  gdmltp validate output_0.root                            # schema + physics sanity checks
-  gdmltp validate output_0.root --strict                   # warnings also fail (CI gating)""",
+  gdmltp validate output.root                            # schema + physics sanity checks
+  gdmltp validate output.root --strict                   # warnings also fail (CI gating)""",
 }
 
 # Error types that mean "bad input", shown as one friendly line. Anything else
@@ -69,7 +69,7 @@ def _build_parser():
 
     p = argparse.ArgumentParser(
         prog="gdmltp",
-        description="GDMLTargetPractice: run sims, analyze output_0.root, "
+        description="GDMLTargetPractice: run sims, analyze output.root, "
                     "make event displays (no ROOT needed).",
         epilog="run 'gdmltp <command> --help' for command-specific examples")
     p.add_argument("--version", action="version", version=f"gdmltp {__version__}")
@@ -130,7 +130,7 @@ def _build_parser():
 
     # display
     d = _sub("display", "event display: WebGL HTML, PNG stills, and/or Blender")
-    d.add_argument("root", nargs="?", help="output_0.root (optional; geometry-only allowed)")
+    d.add_argument("root", nargs="?", help="output.root (optional; geometry-only allowed)")
     d.add_argument("--gdml", help="overlay this geometry")
     d.add_argument("--image", default=None,
                    help="run the display inside this container image (else runs locally)")
@@ -189,7 +189,7 @@ def _build_parser():
     i.add_argument("file")
 
     # validate
-    v = _sub("validate", "check an output_0.root for schema + physics sanity")
+    v = _sub("validate", "check an output.root for schema + physics sanity")
     v.add_argument("root", nargs="?", default="output_0.root")
     v.add_argument("--strict", action="store_true",
                    help="treat warnings as failures (exit 1)")
@@ -278,7 +278,7 @@ def _dispatch(args):
         if args.root and not Path(args.root).exists():
             if args.gdml:
                 # keep the documented preview workflow working: geometry-only
-                # display before the simulation has produced output_0.root
+                # display before the simulation has produced output.root
                 print(f"[gdmltp] note: {args.root} not found; rendering geometry only",
                       file=sys.stderr)
                 args.root = None
