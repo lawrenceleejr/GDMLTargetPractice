@@ -190,7 +190,7 @@ jobs:
           # GitHub cache so only the first run on a probe/target pays for them
           cp xsec_cache/gxspl_*.xml nu_out/ 2>/dev/null || true
           gdmltp run --config "$CONFIG" -o nu_out
-          test -f nu_out/output.root
+          test -f nu_out/output_0.root
 
       - name: Collect the computed splines
         if: always()
@@ -212,7 +212,7 @@ jobs:
       - name: ONE image, ONE command -- GENIE + Geant4 in a single container
         # The headline the merged image exists for: a bare `docker run` of the
         # genie image completes BOTH stages -- gevgen under the GENIE env, then
-        # g4sim under the base env -- and writes the finished output.root. No
+        # g4sim under the base env -- and writes the finished output_0.root. No
         # front-end, no second container. Splines are already in the run dir.
         env:
           GENIE: ${{ steps.images.outputs.genie }}
@@ -223,7 +223,7 @@ jobs:
           mkdir -p bare_out
           cp nu_out/gxspl_*.xml bare_out/ 2>/dev/null || true
           gtp "$GENIE" run --config "$CONFIG" -o bare_out
-          test -f bare_out/output.root
+          test -f bare_out/output_0.root
           # the intermediate products stay inspectable in the run dir
           test -f bare_out/events.hepmc
           test -f bare_out/vertex_level.root
@@ -243,12 +243,12 @@ jobs:
           gtp "$GENIE" run --config "$CONFIG" -o split_out --stage generator
           test -f split_out/events.hepmc
           test -f split_out/gdmltp_transport.json
-          test ! -f split_out/output.root
+          test ! -f split_out/output_0.root
           gtp "$GENIE" transport -o split_out
-          test -f split_out/output.root
+          test -f split_out/output_0.root
 
       - name: The merged ntuple must open in REAL ROOT as a TTree
-        # exactly what a user does after downloading output.root; the Geant4
+        # exactly what a user does after downloading output_0.root; the Geant4
         # image ships ROOT, so this runs the genuine reader
         env:
           GEANT4: ${{ steps.images.outputs.geant4 }}
@@ -258,11 +258,11 @@ jobs:
           for out in nu_out bare_out; do
             docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
               -v "$PWD:/run" -w /run --entrypoint root "$GEANT4" \
-              -l -b -q ".github/scripts/check_ttree.C(\"$out/output.root\", $EVENTS)" \
+              -l -b -q ".github/scripts/check_ttree.C(\"$out/output_0.root\", $EVENTS)" \
               | tee "root_$out.log"
             grep -q "holds a classic TTree" "root_$out.log"
             if grep -q "Unknown class" "root_$out.log"; then
-              echo "$out/output.root has a class ROOT cannot read" >&2; exit 1
+              echo "$out/output_0.root has a class ROOT cannot read" >&2; exit 1
             fi
           done
 
@@ -273,8 +273,8 @@ jobs:
           set -euxo pipefail
           gtp() { docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
                              -v "$PWD:/run" -w /run "$@"; }
-          gtp "$GEANT4" validate nu_out/output.root
-          gtp "$GEANT4" analyze nu_out/output.root -o nu_out/analysis
+          gtp "$GEANT4" validate nu_out/output_0.root
+          gtp "$GEANT4" analyze nu_out/output_0.root -o nu_out/analysis
           test -f nu_out/analysis/summary.txt
 
       - name: Plot the output ntuple (independent uproot read, inside the image)
@@ -289,13 +289,13 @@ jobs:
           EVENTS=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG'))['run']['events'])")
           docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
             -v "$PWD:/run" -w /run --entrypoint python3 "$GEANT4" \
-            .github/scripts/ci_ntuple_plots.py nu_out/output.root \
+            .github/scripts/ci_ntuple_plots.py nu_out/output_0.root \
             -o nu_out/plots --label "2 GeV numu -> water" \
             --min-events "$EVENTS" --require-steps --require-nu
           # the bare-docker product must carry the same two records
           docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
             -v "$PWD:/run" -w /run --entrypoint python3 "$GEANT4" \
-            .github/scripts/ci_ntuple_plots.py bare_out/output.root \
+            .github/scripts/ci_ntuple_plots.py bare_out/output_0.root \
             -o bare_out/plots --label "2 GeV numu -> water (bare docker)" \
             --min-events "$EVENTS" --require-steps --require-nu
 
