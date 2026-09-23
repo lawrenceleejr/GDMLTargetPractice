@@ -170,10 +170,6 @@ def stage_inputs(outdir, gdml_name, output="output.root", seed=None, field=None,
     (outdir / TRANSPORT_MACRO).write_text(
         build_transport_macro(gdml_name, n, seed=seed, field=field))
 
-    # JTR: Trying to fix the output_0.root bug
-    if output.endswith(".root") and not output.endswith("_0.root"):
-        output = output.replace(".root", "_0.root")
-
     spec = {"generator": generator, "gdml": gdml_name, "events": int(n),
             "seed": seed, "field": field, "output": output,
             "vertex": VERTEX_FILE, "event_file": EVENT_FILE,
