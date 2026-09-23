@@ -154,7 +154,7 @@ def build_transport_macro(gdml_name, n_events, event_file=EVENT_FILE, seed=None,
     return "\n".join(lines) + "\n"
 
 
-def stage_inputs(outdir, gdml_name, output="output_0.root", seed=None, field=None,
+def stage_inputs(outdir, gdml_name, output="output.root", seed=None, field=None,
                  generator="", produced="output.root", image=None):
     """Package stage 1's result as the stage-2 job, in the run directory.
 
@@ -169,6 +169,10 @@ def stage_inputs(outdir, gdml_name, output="output_0.root", seed=None, field=Non
     n = write_event_file(vertex, outdir / EVENT_FILE)
     (outdir / TRANSPORT_MACRO).write_text(
         build_transport_macro(gdml_name, n, seed=seed, field=field))
+
+    # JTR: Trying to fix the output_0.root bug
+    if output.endswith(".root") and not output.endswith("_0.root"):
+        output = output.replace(".root", "_0.root")
 
     spec = {"generator": generator, "gdml": gdml_name, "events": int(n),
             "seed": seed, "field": field, "output": output,
