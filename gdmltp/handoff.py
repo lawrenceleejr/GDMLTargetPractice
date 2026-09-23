@@ -36,6 +36,7 @@ from pathlib import Path
 
 import numpy as np
 import uproot
+import os
 
 from . import io
 
@@ -202,8 +203,11 @@ def read_spec(outdir):
 def merge_nu_block(transported_root, vertex_root, out_path, tree="tree"):
     """Write `out_path` = the transported tree with the generator's nu_* block
     and primary identity grafted on. Event counts must match 1:1."""
-    transported_root = str(transported_root).replace("output.root", "output_0.root")
-    out_path = str(out_path).replace("output.root", "output_0.root")
+    if not os.path.exists(transported_root):
+        mt_fallback = str(transported_root).replace("output.root", "output_0.root")
+        if os.path.exists(mt_fallback):
+            transported_root = mt_fallback
+            out_path = str(out_path).replace("output.root", "output_0.root")
 
     with uproot.open(transported_root) as ft:
         tt = ft[tree]
