@@ -2,6 +2,7 @@
 gntpc commands. subprocess and the converter are mocked, so no GENIE needed."""
 import importlib.util
 import json
+from pathlib import Path
 
 import pytest
 
@@ -28,6 +29,16 @@ def _write_job(tmp_path, **over):
     p = tmp_path / "genie_job.json"
     p.write_text(json.dumps(job))
     return p
+
+
+def _bake_sf_tables(sf_root, tune):
+    """Minimal stand-in for baked HEDIS structure-function tables. GENIE reads
+    them from <HEDIS_SF_DATA_PATH>/<tune>/, one level below the base dir."""
+    d = sf_root / tune
+    d.mkdir(parents=True)
+    (d / "QrkSF_LO_nu_cc_p_iq1_fq2.dat").write_text("")
+    (d / "NucSF_NLO_nu_cc_p.dat").write_text("")
+    return d
 
 
 def test_driver_builds_gevgen_and_converts(repo_root, tmp_path, monkeypatch):
@@ -151,9 +162,9 @@ def test_driver_hedis_tune(repo_root, tmp_path, monkeypatch):
 
 
 def test_driver_hedis_uses_baked_spline(repo_root, tmp_path, monkeypatch):
-    """A baked HEDIS xsec spline (image-provided, covering the requested energy)
-    is used directly -- no gmkhedissf, no gmkspl -- so the example skips the
-    slow spline build. The baked file follows the driver's own cache naming."""
+    """A provided HEDIS xsec spline (via HEDIS_XSEC_DIR, covering the requested
+    energy), together with that tune's SF tables, is used directly -- no
+    gmkhedissf, no gmkspl. The spline follows the driver's own cache naming."""
     mod = _load_driver(repo_root)
     monkeypatch.delenv("GENIE_XSEC_FILE", raising=False)
     monkeypatch.setenv("GDMLTP_HEDIS", "1")
@@ -162,6 +173,13 @@ def test_driver_hedis_uses_baked_spline(repo_root, tmp_path, monkeypatch):
     # a 5 TeV baked spline for numu on W-184, GHE19_00c / HEDIS
     (baked_dir / "gxspl_14_1000741840_GHE19_00c_00_000_HEDIS_5000gev.xml").write_text("<xml/>")
     monkeypatch.setenv("HEDIS_XSEC_DIR", str(baked_dir))
+    # ...and SF tables for the same tune, as a user or custom image would
+    # provide them. gevgen reads them from <HEDIS_SF_DATA_PATH>/<tune>/ during
+    # event generation (not just gmkspl), so a provided spline alone is not
+    # enough. Pointing HEDIS_SF_DATA_PATH at tmp_path also keeps the test from
+    # probing or creating /opt/genie paths.
+    _bake_sf_tables(tmp_path / "hedis-sf", "GHE19_00c_00_000")
+    monkeypatch.setenv("HEDIS_SF_DATA_PATH", str(tmp_path / "hedis-sf"))
     calls = []
     monkeypatch.setattr(mod.subprocess, "run",
                         lambda cmd, **kw: calls.append(cmd) or type("R", (), {"returncode": 0})())
