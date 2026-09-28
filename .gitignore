@@ -118,3 +118,7 @@ build_blend.py
 !gdmltp/assets/build_blend.py
 # staged geometry copies land in the run dir; real geometries live in gdml/
 /*.gdml
+
+# GENIE Externals
+splines/
+genie/externals/

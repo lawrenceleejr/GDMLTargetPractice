@@ -71,15 +71,32 @@ def _ensure_hedis_sf(job, workdir):
     sf_dir = Path(os.environ.get("HEDIS_SF_DATA_PATH",
                                  str(Path(os.environ.get("GENIE", "/opt/genie"))
                                      / "data" / "evgen" / "hedis-sf")))
+    # GENIE reads the tables from <HEDIS_SF_DATA_PATH>/<tune>/ and nowhere else,
+    # so only that directory counts: tables baked for another tune (the image
+    # ships GHE19_00c_00_000) must not satisfy a GHE19_00a_00_000 run.
+    tune_dir = sf_dir / tune
     stamp = sf_dir / f".gdmltp_hedis_sf_{tune}.done"
-    # gmkhedissf writes QrkSF*.dat under a per-tune subdir (<sf_dir>/<tune>/),
-    # so search recursively -- baked-in tables live one level down.
-    if stamp.exists() or (sf_dir.exists() and any(sf_dir.rglob("QrkSF*"))):
+    if stamp.exists() or (tune_dir.is_dir() and any(tune_dir.glob("QrkSF*"))):
         return
     # Preflight: gmkhedissf aborts (SIGABRT, "Assertion `0'") on an image without
     # APFEL/LHAPDF -- turn that into a clear, actionable message up front.
     if not _hedis_provisioned():
         raise RuntimeError(_HEDIS_HELP.format(tune=tune))
+    # Building the tables means GENIE creating <tune_dir> inside sf_dir; if it
+    # can't, it dies on assert(0) in HEDISStrucFunc.cxx. Typical cause: the
+    # image default under /opt while the container runs as a non-root user.
+    try:
+        sf_dir.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+    if not os.access(sf_dir, os.W_OK):
+        raise RuntimeError(
+            f"No HEDIS structure-function tables for tune {tune} in {tune_dir}, "
+            f"and {sf_dir} is not writable, so they cannot be built there.\n"
+            f"  * Precomputed tables (e.g. Fermilab's pochoarus-genie_he_data/"
+            f"hedis-sf): set HEDIS_SF_DATA_PATH to the directory CONTAINING {tune}/.\n"
+            f"  * To build them (slow, one-time): set HEDIS_SF_DATA_PATH to a "
+            f"writable directory, e.g. one inside the mounted run directory.")
     print(f"[run_genie] building HEDIS structure-function tables (gmkhedissf "
           f"--tune {tune}); slow, one-time.", flush=True)
     try:
@@ -133,6 +150,9 @@ def _xsec_args(job, workdir, emax_gev=None):
     reuses a 100 GeV file. For HEDIS tunes the structure-function tables are
     ensured first and the generator list is passed to gmkspl (it must match
     gevgen)."""
+    # Check to set the correct HE DIS directories at the beginning
+    if _is_hedis(job):
+        _ensure_hedis_sf(job, workdir)
     xsec = job.get("cross_sections", "auto")
     if xsec and xsec != "auto":
         return ["--cross-sections", xsec]
@@ -162,8 +182,6 @@ def _xsec_args(job, workdir, emax_gev=None):
                   flush=True)
             return ["--cross-sections", str(baked)]
     if not out.exists():
-        if hedis:
-            _ensure_hedis_sf(job, workdir)
         print(f"[run_genie] no spline file found; generating with gmkspl for "
               f"probe {probe} on {target} (tune {tune}, up to {emax} GeV). "
               f"This is slow the first time; the result is cached in the run "
@@ -180,8 +198,6 @@ def _xsec_args(job, workdir, emax_gev=None):
 
 def run(job_path):
     job = json.loads(Path(job_path).read_text())
-    # DEBUGGING
-    print("DEBUG JOB DICT:", json.dumps(job, indent=2))
     workdir = Path(job_path).resolve().parent
     if job.get("beam_file"):
         return _run_beam(job, workdir)
@@ -191,6 +207,13 @@ def run(job_path):
     vtx_units = job.get("length_units", "cm")
     ghep = str(workdir / "genie_events.ghep.root")
     gst = str(workdir / "genie_events.gst.root")
+    # JTR: gevgen_fnal uses a different file naming convention
+    fnal_prefix = workdir / "genie_events"
+    fnal_out = workdir / "genie_events.0.ghep.root"   # gevgen_fnal: <prefix>.<run>.ghep.root
+    # Never let a previous run's files stand in for this one: if the generator
+    # writes somewhere unexpected, gntpc must fail loudly, not convert old events.
+    for stale in (ghep, gst, fnal_out):
+        Path(stale).unlink(missing_ok=True)
 
     # JTR: Trying to add some flux reading capabilites
     # meaning we need to update the command accordingly
@@ -200,15 +223,9 @@ def run(job_path):
     
     flux_file = flux_info.get("file")
 
-    # DEBUGGING
-    print("DEBUG FLUX FILE GRABBED:", flux_file)
-
-    #cmd = ["gevgen", "-n", str(events), "-f flux/IMCC3_M_1000GeV_1000_150m_gsimple.root", "-p", str(job["probe"]), "-t", str(job["target"]),
-    #       "--tune", job["tune"], "--event-generator-list", job["event_generator_list"],
-    #       "-o", ghep] # This is the command where the flux needs to go
     cmd = []
     
-    # 2. If a GSimple file is provided, use the specialized generator
+    # If a GSimple flux file is provided, use the specialized generator
     if flux_file and "gsimple" in flux_file.lower():
         print(f"[run_genie] GSimple flux detected. Switching to gevgen_fnal.")
         
@@ -222,13 +239,11 @@ def run(job_path):
             "-n", str(events),
             "-f", gsimple_str,
             "-g", job["gdml"],
-            #"-t", str(job["target"]),
-            # Note: gevgen_fnal usually likes a geometry file (-g) instead of a 
-            # single target PDG (-t). If this fails, you may need to map 
-            # job["gdml"] here instead!
         ]
+        out_args = ["-o", str(fnal_prefix), "-r", "0"]
+        produced = fnal_out
     
-    # 3. Otherwise, fall back to the standard generic generator
+    # Else, fall back to the standard generic generator
     else:
         cmd = [
             "gevgen", 
@@ -243,13 +258,14 @@ def run(job_path):
             print(f"[run_genie] WARNING: energy mode {flux_info.get('mode')!r} is "
                   f"approximated by its nominal energy in v1.", file=sys.stderr)
         cmd += fargs
+        out_args = ["-o", ghep]
+        produced = Path(ghep)
 
     # 4. Append the common arguments
     cmd += [
         "--tune", job["tune"], 
         "--event-generator-list", job["event_generator_list"],
-        "-o", ghep
-    ]
+    ] + out_args
 
     if job.get("seed") is not None:
         cmd += ["--seed", str(int(job["seed"]))]
@@ -257,6 +273,8 @@ def run(job_path):
 
     print("[run_genie] generating:", " ".join(cmd), flush=True)
     subprocess.run(cmd, cwd=workdir, check=True)
+    if produced != Path(ghep):
+        produced.replace(ghep)
     print("[run_genie] converting GHEP -> gst ...", flush=True)
     subprocess.run(["gntpc", "-i", ghep, "-f", "gst", "-o", gst], cwd=workdir, check=True)
     print("[run_genie] converting gst -> output.root ...", flush=True)

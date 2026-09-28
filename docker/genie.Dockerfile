@@ -83,10 +83,15 @@ RUN { \
       echo 'export ROOTSYS=/opt/root'; \
       echo 'export LHAPDF_DIR=/opt/lhapdf'; \
       echo 'export APFEL_DIR=/opt/apfel'; \
-      echo 'export LHAPDF_DATA_PATH=/opt/lhapdf/share/LHAPDF'; \
-      echo 'export LHAPATH=/opt/lhapdf/share/LHAPDF'; \
-      echo 'export HEDIS_SF_DATA_PATH=${GENIE}/data/evgen/hedis-sf'; \
-      echo 'export HEDIS_XSEC_DIR=${GENIE}/data/evgen/hedis-xsec'; \
+      echo '# User-set paths win; image defaults only fill in what is unset.'; \
+      echo 'export HEDIS_SF_DATA_PATH=${HEDIS_SF_DATA_PATH:-${GENIE}/data/evgen/hedis-sf}'; \
+      echo 'export HEDIS_XSEC_DIR=${HEDIS_XSEC_DIR:-${GENIE}/data/evgen/hedis-xsec}'; \
+      echo '# LHAPDF reads LHAPDF_DATA_PATH and ignores LHAPATH if both are set, so'; \
+      echo '# resolve ONE search path (same precedence) and export it as both.'; \
+      echo '_gtp_lha=${LHAPDF_DATA_PATH:-${LHAPATH:-}}'; \
+      echo 'case ":${_gtp_lha}:" in *:/opt/lhapdf/share/LHAPDF:*) ;; *) _gtp_lha=${_gtp_lha:+${_gtp_lha}:}/opt/lhapdf/share/LHAPDF ;; esac'; \
+      echo 'export LHAPDF_DATA_PATH=${_gtp_lha} LHAPATH=${_gtp_lha}'; \
+      echo 'unset _gtp_lha'; \
       echo 'export GDMLTP_HEDIS="$(cat /opt/genie/.gdmltp-hedis 2>/dev/null || echo 0)"'; \
       echo 'export PATH=${GENIE}/bin:${ROOTSYS}/bin:${LHAPDF_DIR}/bin:${APFEL_DIR}/bin:${PATH}'; \
       echo 'export LD_LIBRARY_PATH=${GENIE}/lib:${ROOTSYS}/lib:${PYTHIA8_LIB}:${LHAPDF_DIR}/lib:${APFEL_DIR}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}'; \
