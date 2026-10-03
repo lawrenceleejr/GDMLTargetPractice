@@ -2,6 +2,7 @@
 the environment that points the GDMLTP GENIE image at it.
 
     python -m gdmltp.genie_data install      # find on /cvmfs or download; verify; write env files
+    python3 gdmltp/genie_data.py install     # same, without importing the gdmltp package
     python -m gdmltp.genie_data status       # what is installed, and where it came from
     python -m gdmltp.genie_data check DIR    # compare an existing copy against the pinned files
 
@@ -34,13 +35,23 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from gdmltp.genie_data_manifest import BUNDLES
+try:
+    from gdmltp.genie_data_manifest import BUNDLES
+except ImportError:
+    # Run as a plain script (python3 gdmltp/genie_data.py ...), e.g. on an OSG
+    # access point without the toolkit's dependencies: importing the gdmltp
+    # package pulls in numpy and friends, but this tool only needs the stdlib
+    # and the manifest next to it -- and Python puts this file's own directory
+    # first on sys.path when it is run as a script.
+    from genie_data_manifest import BUNDLES
 
 DEFAULT_BUNDLE = "hedis-GHE19_00a"
 DEFAULT_MOUNT = "/data/gdmltp"
 ENV_NAME = "genie-hedis"
 MARKER = ".gdmltp-complete.json"
 STATE = "state.json"
+RUNTIME = "runtime.json"   # read by genie/run_genie.py inside the container
+DEFAULT_IMAGE = "ghcr.io/lawrenceleejr/gdmltargetpractice-genie:main"
 SMALL = 64 * 1024        # files this small are always hashed, even on CVMFS spot checks
 
 
@@ -301,6 +312,21 @@ def tarball_intact(target, marker):
 
 # --- env files -----------------------------------------------------------------
 
+def write_runtime(root, bundle_name, bundle, resolved):
+    """Describe the installed bundle for the GENIE driver in the container:
+    which tune it serves and what each variable should be. CVMFS locations are
+    absolute; local data is relative to the data directory's genie/ folder, so
+    the description holds wherever that directory is mounted. The driver
+    applies it only to runs with this tune."""
+    env = {var: ({"cvmfs": path} if where == "cvmfs" else {"rel": path})
+           for var, (where, path) in sorted(resolved.items())}
+    tmp = root / (RUNTIME + ".tmp")
+    tmp.write_text(json.dumps({"bundle": bundle_name, "tune": bundle["tune"],
+                               "genie_version": bundle["genie_version"],
+                               "env": env}, indent=2) + "\n")
+    os.replace(tmp, root / RUNTIME)
+
+
 def write_env_files(genie_dir, resolved, mount_point):
     """`resolved` maps VAR -> absolute CVMFS path, or a path relative to
     genie_dir for data installed locally."""
@@ -394,6 +420,7 @@ def cmd_install(args, log=print):
         else:
             raise DataError(f"unknown component kind {comp['kind']!r}")
     write_env_files(genie_dir, resolved, args.mount_point)
+    write_runtime(root, args.bundle, bundle, resolved)
     (root / STATE).write_text(json.dumps({"bundle": args.bundle, "installed": _now(),
                                           "genie_version": bundle["genie_version"],
                                           "tune": bundle["tune"],
@@ -404,13 +431,14 @@ def cmd_install(args, log=print):
 
 def _print_usage(dest, genie_dir, mount, sources, log):
     env_file, sh_file = genie_dir / f"{ENV_NAME}.env", genie_dir / f"{ENV_NAME}.sh"
-    log("\nDone. To use it:")
-    log("  Docker (e.g. your laptop):")
-    log(f"    docker run ... -v {dest}:{mount} --env-file {env_file} <image> run --config <cfg>.yaml")
-    log(f'    with gtp:  GTP_HE_ENV="-v {dest}:{mount} --env-file {env_file}"')
-    log("  Inside a container or OSG job, with the data directory visible:")
-    log(f"    source <data dir>/genie/{sh_file.name}")
-    log("  Leave `cross_sections` unset (or 'auto') in your YAML so GENIE_XSEC_FILE is used.")
+    log("\nDone. To use it, set GENIE once (e.g. in your GDMLrc.sh) so it also mounts the data:")
+    log(f'    export GENIE="-v {dest}:{DEFAULT_MOUNT}:ro {DEFAULT_IMAGE}"')
+    log("  then run as usual:")
+    log("    gtp $GENIE run --config <cfg>.yaml")
+    log("  Runs with this bundle's tune pick the data up automatically; other tunes ignore it.")
+    log("  Leave `cross_sections` unset (or 'auto') in your YAML so the installed splines are used.")
+    log(f"  Without that mount (bare docker, OSG jobs): pass --env-file {env_file},")
+    log(f"  or `source <data dir>/genie/{sh_file.name}` inside the container.")
     if any(s["source"] == "cvmfs" for s in sources.values()):
         log("  Some data is used from CVMFS: jobs must run where that repository is\n"
             "  mounted (on OSG: HAS_CVMFS_fermilab_opensciencegrid_org == True).")
